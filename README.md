@@ -1,2 +1,2 @@
 # tomcore-website
-Content for tomcore.io
+Here is the content for tomcore.io
