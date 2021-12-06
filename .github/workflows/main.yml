@@ -25,6 +25,7 @@ jobs:
         shell: bash
         env:
           SEC: ${{ secrets.AZURE_RBAC_CREDENTIALS }}
+          AZURE_STORAGE_BLOB_ENDPOINT: ${{ secrets.AZURE_STORAGE_BLOB_ENDPOINT }}
         run: |
           wget https://aka.ms/downloadazcopy-v10-linux -nv
           tar -xvf downloadazcopy-v10-linux
@@ -33,6 +34,6 @@ jobs:
           export AZCOPY_SPA_APP_ID=$(echo $SEC | jq '.clientId' -r)
           export AZCOPY_SPA_TENANT_ID=$(echo $SEC | jq '.tenantId' -r)
           ./azcopy/azcopy login --service-principal --application-id $AZCOPY_SPA_APP_ID --tenant-id $AZCOPY_SPA_TENANT_ID
-          ./azcopy/azcopy sync $GITHUB_WORKSPACE/public ${{ secrets.STORAGE_CONTAINER_URI }} --delete-destination=true
+          ./azcopy/azcopy sync $GITHUB_WORKSPACE/build $AZURE_STORAGE_BLOB_ENDPOINT\$web --delete-destination=true
           export AZCOPY_SPA_CLIENT_SECRET=
           ./azcopy/azcopy logout
