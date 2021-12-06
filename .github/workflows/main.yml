@@ -1,0 +1,38 @@
+name: CI
+
+on:
+  push:
+    branches: [ master ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          submodules: 'true'
+
+      - name: Setup Hugo
+        uses: peaceiris/actions-hugo@v2
+        with:
+          hugo-version: '0.89.4'
+          extended: true
+
+      - name: Build
+        run: hugo --minify
+
+      - name: Deploy to Azure Storage
+        shell: bash
+        env:
+          SEC: ${{ secrets.AZURE_RBAC_CREDENTIALS }}
+        run: |
+          wget https://aka.ms/downloadazcopy-v10-linux -nv
+          tar -xvf downloadazcopy-v10-linux
+          mv azcopy_linux_amd64* azcopy
+          export AZCOPY_SPA_CLIENT_SECRET=$(echo $SEC | jq '.clientSecret' -r)
+          export AZCOPY_SPA_APP_ID=$(echo $SEC | jq '.clientId' -r)
+          export AZCOPY_SPA_TENANT_ID=$(echo $SEC | jq '.tenantId' -r)
+          ./azcopy/azcopy login --service-principal --application-id $AZCOPY_SPA_APP_ID --tenant-id $AZCOPY_SPA_TENANT_ID
+          ./azcopy/azcopy sync $GITHUB_WORKSPACE/public ${{ secrets.STORAGE_CONTAINER_URI }} --delete-destination=true
+          export AZCOPY_SPA_CLIENT_SECRET=
+          ./azcopy/azcopy logout
