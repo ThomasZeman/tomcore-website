@@ -34,6 +34,6 @@ jobs:
           export AZCOPY_SPA_APP_ID=$(echo $SEC | jq '.clientId' -r)
           export AZCOPY_SPA_TENANT_ID=$(echo $SEC | jq '.tenantId' -r)
           ./azcopy/azcopy login --service-principal --application-id $AZCOPY_SPA_APP_ID --tenant-id $AZCOPY_SPA_TENANT_ID
-          ./azcopy/azcopy sync $GITHUB_WORKSPACE/public $AZURE_STORAGE_BLOB_ENDPOINT\$web --delete-destination=true
+          ./azcopy/azcopy sync $GITHUB_WORKSPACE/public $AZURE_STORAGE_BLOB_ENDPOINT\$web --exclude-path=assets --delete-destination=true
           export AZCOPY_SPA_CLIENT_SECRET=
           ./azcopy/azcopy logout
