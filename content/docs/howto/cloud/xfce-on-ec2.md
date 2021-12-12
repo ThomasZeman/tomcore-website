@@ -1,13 +1,13 @@
 ---
-title: Xfce on EC2
-weight: 1
+title: Xfce Desktop on EC2
+weight: 3
 ---
 # How to run Xfce on EC2
 
 ### Problems
 
-- I need a Linux machine which can receive arbitrary inbound traffic and runs a desktop environment.
-- I want a globally reachable Linux Machine on the Internet which I can remote desktop into.
+- You need a globally reachable Linux machine which runs a desktop environment.
+- You want to be able to access this machine from the Internet.
 
 ### Solution
 
@@ -17,32 +17,36 @@ weight: 1
 
 ### Steps
 
-1. Open the EC2 Dashboard
+1. Create a Virtual Machine
 
-[![Open EC2 Dashboard](/assets/images/howto/cloud/ec2-xfce/open-ec2-dashboard.png)](/assets/images/howto/cloud/ec2-xfce/open-ec2-dashboard.png)
+Follow these [instructions](create-ubuntu-ec2-instance.md) page to create a Virtual Machine.
 
-2. Click on Launch Instance
+2. Update Ubuntu
 
-[![Open EC2 Dashboard](/assets/images/howto/cloud/ec2-xfce/click-launch-instance.png)](/assets/images/howto/cloud/ec2-xfce/click-launch-instance.png)
+```shell
+sudo apt-get update
+```
 
-3. Select Ubuntu Server 20.04 LTS
+3. Install Xfce and Remote Desktop
 
-[![Open EC2 Dashboard](/assets/images/howto/cloud/ec2-xfce/select-ubuntu-server-2004lts.png)](/assets/images/howto/cloud/ec2-xfce/select-ubuntu-server-2004lts.png)
+This will install a few hundreds of packages. 
 
-4. Choose Instance Type
+```shell
+sudo apt-get install xfce4 xfce4-goodies xfce4-terminal xrdp
+```
 
-Select an appropriately sized machine for your workload. Below I chose `t2.large` which comes with 2 Virtual CPUs and 8GB of RAM. 
+During the installation of the packages you will need to set the default display manager to `lightdm`
 
-[![Open EC2 Dashboard](/assets/images/howto/cloud/ec2-xfce/choose-instance-type.png)](/assets/images/howto/cloud/ec2-xfce/choose-instance-type.png)
+[![Open EC2 Dashboard](/assets/images/howto/cloud/ec2-xfce/configure-displaymanager.png)](/assets/images/howto/cloud/ec2-xfce/configure-displaymanager.png)
 
-5. Configure Instance
+4. Start Xfce and Remote Desktop
 
-[![Open EC2 Dashboard](/assets/images/howto/cloud/ec2-xfce/configure-instance.png)](/assets/images/howto/cloud/ec2-xfce/configure-instance.png)
+```shell
+sudo service xrdp start
+echo "startxfce4" > ~/.xsession
+sudo shutdown -r now
+```
 
-6. Add Storage
-
-[![Open EC2 Dashboard](/assets/images/howto/cloud/ec2-xfce/add-storage.png)](/assets/images/howto/cloud/ec2-xfce/add-storage.png)
-
-7. Configure Security Group
-
-[![Open EC2 Dashboard](/assets/images/howto/cloud/ec2-xfce/configure-security-group.png)](/assets/images/howto/cloud/ec2-xfce/configure-security-group.png)
+```shell
+ssh ubuntu@1.2.3.4 -i publicKey.pem -L 2000:127.0.0.1:3389
+```
