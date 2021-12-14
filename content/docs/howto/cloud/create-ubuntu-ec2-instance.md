@@ -4,6 +4,8 @@ weight: 1
 ---
 # How to create an Ubuntu Server EC2 Instance
 
+[![HackerRank](https://img.shields.io/badge/LAST%20VALIDATED%20-14%2F12%2F2021-darkgreen)](https://ielts.com.au/articles/how-to-write-the-date-correctly/)
+
 ### Steps
 
 1. Open the EC2 Dashboard
@@ -20,7 +22,7 @@ weight: 1
 
 4. Choose Instance Type
 
-Select an appropriately sized machine for your workload. Below I chose `t2.large` which comes with 2 Virtual CPUs and 8GB of RAM.
+Select an appropriately sized machine for your workload. Below I chose `t2.large` which comes with 2 Virtual CPUs and 8GB of RAM
 
 [![Open EC2 Dashboard](/assets/images/howto/cloud/create-ec2/choose-instance-type.png)](/assets/images/howto/cloud/create-ec2/choose-instance-type.png)
 
@@ -34,7 +36,7 @@ Select an appropriately sized machine for your workload. Below I chose `t2.large
 
 7. Add Tags
 
-If you like you can add tags here to help you identify the instance.
+Specify tags for the instance or leave blank
 
 8. Configure Security Group
 
@@ -46,14 +48,15 @@ If you like you can add tags here to help you identify the instance.
 
 10. Key Pair
 
-Either create a new or use an existing key pair. If you create a new key pair, you will have to download the keys and save them somewhere.
-You can only download the private key at this point in time.
+Either create a new or use an existing key pair. If you create a new key pair, you will have to download the keys and save them somewhere.  
+
+Warning: This is the only chance to download the private key
 
 [![Open EC2 Dashboard](/assets/images/howto/cloud/create-ec2/key-pair-dialog.png)](/assets/images/howto/cloud/create-ec2/key-pair-dialog.png)
 
 11. Launch
 
-AWS is launch the new EC2 instance. Scroll to the bottom and click on "View Instances"
+Click on "Launch Instances" and AWS will launch the new EC2 instance
 
 ### What's Next
 
