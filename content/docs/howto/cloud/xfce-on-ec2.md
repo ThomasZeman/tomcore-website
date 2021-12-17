@@ -6,7 +6,7 @@ weight: 3
 
 [![HackerRank](https://img.shields.io/badge/LAST%20VALIDATED%20-14%2F12%2F2021-darkgreen)](https://ielts.com.au/articles/how-to-write-the-date-correctly/)
 
-### Problems
+### Problem
 
 - You need a globally reachable Linux machine which runs a desktop environment.
 - You want to be able to access this machine from the Internet.
@@ -25,7 +25,7 @@ Follow these [instructions](create-ubuntu-ec2-instance.md) to create an EC2 inst
 
 2. Login via SSH
 
-Get the public IP of the EC2 instance and [log in](connect-to-remote-linux-machine.md) with user `ubuntu`
+Get the public IP of the EC2 instance and [log in](connect-to-remote-linux-ssh.md) with user `ubuntu`
 
 3. Update Ubuntu
 
@@ -33,7 +33,13 @@ Get the public IP of the EC2 instance and [log in](connect-to-remote-linux-machi
 sudo apt-get update
 ```
 
-4. Install Xfce and Remote Desktop
+4. Set a password for the `ubuntu` user
+
+```shell
+sudo passwd ubuntu
+```
+
+5. Install Xfce and Remote Desktop
 
 The following command installs essential Xfce and Remote Desktop packages. Note: This will install a few hundreds of 
 dependency packages
@@ -46,17 +52,16 @@ During the installation you will need to set the default display manager to `lig
 
 [![Open EC2 Dashboard](/assets/images/howto/cloud/ec2-xfce/configure-displaymanager.png)](/assets/images/howto/cloud/ec2-xfce/configure-displaymanager.png)
 
-4. Configure XServer
+6. Configure XServer
 
 Make Xfce the default display manager for the `ubuntu` user and restart the machine
 
 ```shell
-// sudo service xrdp start
 echo "startxfce4" > ~/.xsession
 sudo shutdown -r now
 ```
 
-5. Port Forwarding to Remote Desktop
+7. Port Forwarding to Remote Desktop
 
 Repeat step 2 to log into the EC2 and additionally forward an arbitrary local port (`2000` below) to the remote desktop port `3389`
 
