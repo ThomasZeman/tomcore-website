@@ -1,5 +1,5 @@
 # hugo server --minify --themesDir ... --baseURL=http://0.0.0.0:1313/theme/hugo-book/
-
+googleAnalytics: G-82E23LZ4BK
 baseURL: https://tomcore.io/
 title: TomCore
 theme: hugo-book
@@ -32,15 +32,16 @@ menu:
     - name: "TomCore on Github"
       url: "https://github.com/tomcoreio"
       weight: 10
+    - name: "TomCore on Youtube"
+      url: "https://www.youtube.com/channel/UCBpEz4DqZ3lRsOd_WLVyisw/featured"
+      weight: 11
     - name: "Thomas on Github"
       url: "https://github.com/ThomasZeman"
-      weight: 11
-    - name: "Twitter"
-      url: "https://twitter.com/ThomasZeman"
       weight: 12
-    - name: "Youtube"
-      url: "https://www.youtube.com/channel/UCBpEz4DqZ3lRsOd_WLVyisw/featured"
+    - name: "Thomas on Twitter"
+      url: "https://twitter.com/ThomasZeman"
       weight: 13
+
 
 params:
   # (Optional, default light) Sets color theme: light, dark or auto.
@@ -110,3 +111,4 @@ params:
   # /!\ This is an experimental feature, might be removed or changed at any time
   # (Optional, experimental, default false) Enables a drop-down menu for translations only if a translation is present.
   BookTranslatedOnly: false
+
