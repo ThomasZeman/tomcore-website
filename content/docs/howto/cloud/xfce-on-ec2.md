@@ -63,8 +63,24 @@ sudo shutdown -r now
 
 7. Port Forwarding to Remote Desktop
 
-Repeat step 2 to log into the EC2 and additionally forward an arbitrary local port (`2000` below) to the remote desktop port `3389`
+Repeat step 2 to log into the EC2 and additionally forward an arbitrary local port (`2000` below) to the remote desktop port `3389`.  
+
+Note: The following command works with the OpenSSH syntax. Switch `-N` does not open a remote shell but only forwards the port (See more info[here](https://explainshell.com/explain?cmd=ssh+-L+-N+-f+-l)).
 
 ```shell
-ssh ubuntu@1.2.3.4 -i publicKey.pem -L 2000:127.0.0.1:3389
+ssh ubuntu@<server-ip|FQDN> -i <private-pem-key-file> -L 2000:127.0.0.1:3389 -N
 ```
+
+8. Connect to Remote Desktop (from Windows)
+
+Start the Remote Desktop application. As remote address provide the local endpoint of the SSH tunnel.
+
+[![Open Remote Desktop](/assets/images/howto/cloud/ec2-xfce/open-remote-desktop.png)](/assets/images/howto/cloud/ec2-xfce/open-remote-desktop.png)
+
+Click "Connect" and provide your username (default is `ubuntu`) and password (as set in step 4) in the login dialog.
+
+[![Remote Desktop](/assets/images/howto/cloud/ec2-xfce/login-xrdp.png)](/assets/images/howto/cloud/ec2-xfce/login-xrdp.png)
+
+If all works well, you should see a desktop with a few desktop icons, a launcher at the bottom and menu bar at the top.
+
+[![Remote Desktop](/assets/images/howto/cloud/ec2-xfce/xfce4-xrdp.png)](/assets/images/howto/cloud/ec2-xfce/xfce4-xrdp.png)
