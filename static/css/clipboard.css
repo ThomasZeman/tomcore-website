@@ -1,0 +1,30 @@
+.copy-to-clipboard-button {
+    position: absolute;
+    display: grid;
+    grid-auto-flow: column;
+    align-items: center;
+    grid-column-gap: 4px;
+    right: 0;
+    padding: 4px 8px;
+    margin: 5px;
+    border: none;
+    z-index: 1;
+    opacity: 0;
+    transition: 0.1s;
+}
+
+.copy-to-clipboard-button:hover {
+    cursor: pointer;
+}
+.copy-to-clipboard-button:hover > svg {
+}
+.copy-to-clipboard-button:focus {
+    outline: 0;
+}
+.highlight {
+    position: relative;
+}
+.highlight:hover > .copy-to-clipboard-button {
+    opacity: 1;
+    transition: 0.2s;
+}

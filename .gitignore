@@ -1,5 +1,5 @@
 .idea
 resources/**
-static
+static/assets
 public
 .hugo_build.lock
