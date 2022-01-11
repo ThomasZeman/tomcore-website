@@ -27,7 +27,7 @@ Follow these [instructions](create-ubuntu-ec2-instance.md) to create an EC2 inst
 
 Get the public IP of the EC2 instance and [log in](connect-to-remote-linux-ssh.md) with user `ubuntu`
 
-3. Update Ubuntu
+3. Update Package List
 
 ```shell
 sudo apt-get update
