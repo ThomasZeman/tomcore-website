@@ -13,7 +13,7 @@ It seems that at the time of this writing, CableCreations stopped using the Real
 
 ## Performance Optimizations
 
-For conducting the tests, I wanted to apply the same optimizations as I did when testing the [built-in Ethernet](raspberry-pi-4bnetwork-performance) port. If
+For conducting the tests, I wanted to apply the same optimizations as I did when testing the [built-in Ethernet](raspberry-pi-4b-network-performance) port. If
 you haven't read this article yet, I strongly suggest doing so now.
 
 ### 1. Changing affinity for the hardware receive and send interrupts
