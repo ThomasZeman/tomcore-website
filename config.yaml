@@ -41,7 +41,9 @@ menu:
     - name: "Thomas on Twitter"
       url: "https://twitter.com/ThomasZeman"
       weight: 13
-
+    - name: ""
+      post: <script type='text/javascript' src='https://storage.ko-fi.com/cdn/widget/Widget_2.js'></script><script type='text/javascript'>kofiwidget2.init('Support my work', '#000000', 'C0C4GEP4X');kofiwidget2.draw();</script>
+      weight: 14
 
 params:
   # (Optional, default light) Sets color theme: light, dark or auto.

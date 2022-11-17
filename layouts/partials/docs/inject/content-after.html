@@ -1,5 +1,10 @@
+{{ if not (findRE "Welcome to TomCore" .Content 1) }}
+<h3>Support</h3>
+<div>If you found this content valuable, please support my work <a href='https://ko-fi.com/C0C4GEP4X' target='_blank'>here</a>
+</div>
 <h3>License</h3>
 This text is available under the <a href="https://creativecommons.org/licenses/by-sa/4.0/legalcode">Creative Commons Attribution-ShareAlike License</a>
+{{ end }}
 {{ if (findRE "<pre" .Content 1) }}
 <script src="/js/clipboard.js"></script>
 <link rel="stylesheet" href="/css/clipboard.css">

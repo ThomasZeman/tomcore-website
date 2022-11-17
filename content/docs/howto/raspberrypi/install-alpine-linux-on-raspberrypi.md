@@ -352,5 +352,3 @@ pi:/# reboot
 ```
 
 The Raspberry PI will restart and boot a new Alpine Linux installation.
-
-https://pi3g.com/2019/01/10/alpine-boot-process-on-the-raspberry-pi/
