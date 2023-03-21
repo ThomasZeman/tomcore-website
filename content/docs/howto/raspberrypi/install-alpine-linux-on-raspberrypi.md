@@ -1,8 +1,10 @@
 ---
 weight: 11
-title: Install Alpine Linux on Raspberry PI
+title: Install Alpine Linux on a Raspberry PI
 ---
 # Install Alpine Linux on a Raspberry PI
+
+[![HackerRank](https://img.shields.io/badge/LAST%20VALIDATED%20-18%2F03%2F2023-darkgreen)](https://ielts.com.au/articles/how-to-write-the-date-correctly/)
 
 This how-to walks you through the installation of the 64-bit Alpine Linux on a Raspberry PI 3 or 4 in
 sys mode (also known as "classic mode").
@@ -236,7 +238,7 @@ x ./apks/aarch64/vlan-2.3-r0.apk
 ```
 Once unpacked, you will see the content of the archive in the File Explorer Window for the SD Card.
 
-## Boot Alpine
+## Boot and Configure Alpine
 
 Remove the SD Card from the reader, insert it into the SD Card slot on the Raspberry PI and power it up. You will see
 Alpine booting in Diskless-mode:
@@ -304,6 +306,8 @@ pi:/# setup-apkrepos
 The script will ask you to choose your preferred mirror of the Alpine repository. If you are unsure choose the option "Detect and add fastest mirror from above list
 `
 
+## Install Alpine
+
 ### Format system partition
 
 ```shell
@@ -326,15 +330,13 @@ pi:/# swapon /dev/mmcblk0p3
 pi:/# rc-update add swap boot
 ```
 
-### Install Alpine
+### Run setup
 
 ```shell
 # Force the installation script to accept non FAT filesystems on the PI
 pi:/# export FORCE_BOOTFS=1
 # Optional: Declare the swap partition
 pi:/# export SWAP_DEVICES=/dev/mmcblk0p3
-# Create destination boot directory (https://gitlab.alpinelinux.org/alpine/alpine-conf/-/issues/10540)
-pi:/# mkdir -p /mnt/boot
 # Run installation script
 pi:/# setup-disk /mnt
 ```
