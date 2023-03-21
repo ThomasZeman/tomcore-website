@@ -1,5 +1,5 @@
 ---
 title: "Raspberry PI"
-bookCollapseSection: false
+bookCollapseSection: true
 weight: 11
 ---

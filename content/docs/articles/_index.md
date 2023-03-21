@@ -1,5 +1,5 @@
 ---
 weight: 2
-bookFlatSection: false
+bookFlatSection: true
 title: "Articles"
 ---

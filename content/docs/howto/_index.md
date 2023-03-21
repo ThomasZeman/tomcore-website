@@ -1,5 +1,5 @@
 ---
 weight: 1
-bookFlatSection: false
+bookFlatSection: true
 title: "How Tos"
 ---

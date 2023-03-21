@@ -35,9 +35,6 @@ menu:
     - name: "TomCore on Youtube"
       url: "https://www.youtube.com/channel/UCBpEz4DqZ3lRsOd_WLVyisw/featured"
       weight: 11
-    - name: "Thomas on Github"
-      url: "https://github.com/ThomasZeman"
-      weight: 12
     - name: "Thomas on Twitter"
       url: "https://twitter.com/ThomasZeman"
       weight: 13
