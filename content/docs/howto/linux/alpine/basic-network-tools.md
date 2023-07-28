@@ -31,7 +31,7 @@ BusyBox, whether included in the bespoke Alpine version, and which package conta
 | ifenslave | /sbin | Configure network interfaces for parallel routing | ✔️| ? |
 | ifplugd | | Network interface plug detection daemon | ❌ | |
 | ifup | /sbin | ifup [-ainmvf] ifaces... | ✔️| ifupdown-ng ifupdown |
-| inetd | | Listen for network connections and launch programs | ❌ | |
+| inetd | | Listen for network connections and launch programs | ✔️| busybox-extras |
 | ip | /sbin | | ✔️| iproute2-minimal |
 | ipaddr | /sbin | | ✔️| iproute2-minimal |
 | ipcalc | /bin | Calculate IP network settings from a IP address | ✔️| ? |
