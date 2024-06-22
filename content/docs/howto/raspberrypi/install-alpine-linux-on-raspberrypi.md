@@ -347,6 +347,7 @@ pi:/# mount -o remount,rw /dev/mmcblk0p1
 # Remove all files
 pi:/# rm /media/mmcblk0p1/* -r
 # Copy all files required for booting from the new installation to the boot partition
+# Ignore warnings
 pi:/# cp -r /mnt/boot/* /media/mmcblk0p1/
 # Boot the new Alpine installation
 pi:/# reboot
