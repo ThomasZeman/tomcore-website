@@ -275,8 +275,9 @@ localhost:~# /etc/init.d/sshd restart
  * Starting sshd ...                                             [ ok ]
  ```
 
- ## NFT
+ ## NFT Tables
 
+```shell
 localhost:~# sudo apk add nftables
 fetch http://mirrors.edge.kernel.org/alpine/v3.20/main/aarch64/APKINDEX.tar.gz
 fetch http://mirrors.edge.kernel.org/alpine/v3.20/community/aarch64/APKINDEX.tar.gz
@@ -289,3 +290,4 @@ fetch http://mirrors.edge.kernel.org/alpine/v3.20/community/aarch64/APKINDEX.tar
 Executing busybox-1.36.1-r29.trigger
 OK: 322 MiB in 78 packages
 localhost:~#
+```
