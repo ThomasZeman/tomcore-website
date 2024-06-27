@@ -29,11 +29,11 @@ jobs:
           aws-region: us-east-1
 
       - name: Deploy static site to S3 bucket
-        working-directory: $GITHUB_WORKSPACE/public
+        working-directory: ./public
         run: aws s3 sync ./* s3://${{ secrets.AWS_BUCKET_NAME }}/ --delete --metadata-directive REPLACE --cache-control "max-age=86400, public"
 
       - name: Set cache-control headers
-        working-directory: $GITHUB_WORKSPACE/public
+        working-directory: ./public
         run: |
           aws s3 cp s3://${{ secrets.AWS_BUCKET_NAME }}/ s3://${{ secrets.AWS_BUCKET_NAME }}/ --exclude "*" --include "*.html" --recursive --metadata-directive REPLACE --content-type "text/html" --cache-control "max-age=60" 
           aws s3 cp s3://${{ secrets.AWS_BUCKET_NAME }}/ s3://${{ secrets.AWS_BUCKET_NAME }}/ --exclude "*" --include "*.css" --recursive --metadata-directive REPLACE --content-type "text/css" --cache-control "max-age=31536000, public"
