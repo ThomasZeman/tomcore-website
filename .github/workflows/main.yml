@@ -21,20 +21,20 @@ jobs:
       - name: Build
         run: hugo --minify
 
-      - name: Deploy to Azure Storage
-        shell: bash
-        env:
-          SEC: ${{ secrets.AZURE_RBAC_CREDENTIALS }}
-          AZURE_STORAGE_BLOB_ENDPOINT: ${{ secrets.AZURE_STORAGE_BLOB_ENDPOINT }}
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      - name: Deploy static site to S3 bucket
+        working-directory: ./frontend
+        run: aws s3 sync $GITHUB_WORKSPACE/public/* s3://${{ secrets.AWS_BUCKET_NAME }}/ --delete --metadata-directive REPLACE --cache-control "max-age=86400, public"
+
+      - name: Set cache-control headers
+        working-directory: ./frontend
         run: |
-          wget https://aka.ms/downloadazcopy-v10-linux -nv
-          tar -xvf downloadazcopy-v10-linux
-          mv azcopy_linux_amd64* azcopy
-          export AZCOPY_SPA_CLIENT_SECRET=$(echo $SEC | jq '.clientSecret' -r)
-          export AZCOPY_SPA_APP_ID=$(echo $SEC | jq '.clientId' -r)
-          export AZCOPY_SPA_TENANT_ID=$(echo $SEC | jq '.tenantId' -r)
-          ./azcopy/azcopy login --service-principal --application-id $AZCOPY_SPA_APP_ID --tenant-id $AZCOPY_SPA_TENANT_ID
-          ./azcopy/azcopy copy "$GITHUB_WORKSPACE/public/*" $AZURE_STORAGE_BLOB_ENDPOINT\$web --recursive --cache-control "max-age=86400" --overwrite ifSourceNewer
-          ./azcopy/azcopy copy "$GITHUB_WORKSPACE/public/index.html" $AZURE_STORAGE_BLOB_ENDPOINT\$web --cache-control "max-age=3600" --overwrite true
-          export AZCOPY_SPA_CLIENT_SECRET=
-          ./azcopy/azcopy logout
+          aws s3 cp s3://${{ secrets.AWS_BUCKET_NAME }}/ s3://${{ secrets.AWS_BUCKET_NAME }}/ --exclude "*" --include "*.html" --recursive --metadata-directive REPLACE --content-type "text/html" --cache-control "max-age=60" 
+          aws s3 cp s3://${{ secrets.AWS_BUCKET_NAME }}/ s3://${{ secrets.AWS_BUCKET_NAME }}/ --exclude "*" --include "*.css" --recursive --metadata-directive REPLACE --content-type "text/css" --cache-control "max-age=31536000, public"
+          aws s3 cp s3://${{ secrets.AWS_BUCKET_NAME }}/ s3://${{ secrets.AWS_BUCKET_NAME }}/ --exclude "*" --include "*.js" --recursive --metadata-directive REPLACE --content-type "application/javascript" --cache-control "max-age=31536000, public"
