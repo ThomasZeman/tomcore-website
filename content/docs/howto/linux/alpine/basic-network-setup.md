@@ -350,4 +350,4 @@ localhost:~# /etc/init.d/sshd restart
  * Starting sshd ...                                             [ ok ]
  ```
 
-These steps will ensure that remote logins require a valid SSH key.
+These steps will ensure that remote logins require a valid SSH key
