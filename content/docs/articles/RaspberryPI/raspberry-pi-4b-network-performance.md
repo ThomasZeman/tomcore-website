@@ -35,7 +35,7 @@ iperf3.exe -c 10.0.0.1 -t 65 -O 5 -P 10
 
 (CPU Affinity manually set to CPU 3 and 4)
 
-[![pc-sender-pi4-receiver](/assets/images/articles/pi4-network-performance/pc-sender-pi4-receiver.png)](/assets/images/articles/pi4-network-performance/pc-sender-pi4-receiver.png)
+[![pc-sender-pi4-receiver](/images/articles/pi4-network-performance/pc-sender-pi4-receiver.png)](/images/articles/pi4-network-performance/pc-sender-pi4-receiver.png)
 
 ```text
 [ ID] Interval           Transfer     Bandwidth
@@ -63,7 +63,7 @@ iperf3.exe -c 10.0.0.100 -t 65 -O 5 -P 10 -i 60 -A 3 -Z
 
 From the perspective of the Windows 10 machine:
 
-[![pc-sender-pi4-receiver](/assets/images/articles/pi4-network-performance/pc-receiver-pi4-sender.png)](/assets/images/articles/pi4-network-performance/pc-receiver-pi4-sender.png)
+[![pc-sender-pi4-receiver](/images/articles/pi4-network-performance/pc-receiver-pi4-sender.png)](/images/articles/pi4-network-performance/pc-receiver-pi4-sender.png)
 
 iperf3 output on the Raspberry PI4:
 
@@ -86,7 +86,7 @@ iperf3 output on the Raspberry PI4:
 
 When both machines send and receive simultaneously, the throughput drops significantly to about ~550Mbits/sec for both sides.
 
-[![pc-pi4-fullduplex](/assets/images/articles/pi4-network-performance/pc-pi4-fullduplex.png)](/assets/images/articles/pi4-network-performance/pc-pi4-fullduplex.png)
+[![pc-pi4-fullduplex](/images/articles/pi4-network-performance/pc-pi4-fullduplex.png)](/images/articles/pi4-network-performance/pc-pi4-fullduplex.png)
 
 Windows sender:
 
@@ -172,7 +172,7 @@ After another full-duplex run, the interrupt stats showed a much better distribu
 The Raspberry PI was almost back to its half-duplex sending speed, whereas the Windows PC 10 send-performance (Raspberry PI receive performance) did not increase quite as much
 and also, the throughput fluctuated much more:
 
-[![pc-pi4-fullduplex](/assets/images/articles/pi4-network-performance/pc-pi4-fullduplex-optimization-irq.png)](/assets/images/articles/pi4-network-performance/pc-pi4-fullduplex-optimization-irq.png)
+[![pc-pi4-fullduplex](/images/articles/pi4-network-performance/pc-pi4-fullduplex-optimization-irq.png)](/images/articles/pi4-network-performance/pc-pi4-fullduplex-optimization-irq.png)
 
 Windows Sender:
 
@@ -208,7 +208,7 @@ Note: Some more insights about the way this works can be found [here](https://ar
 
 This brings another performance gain and removes the throughput fluctuation seen before:
 
-[![pc-pi4-fullduplex](/assets/images/articles/pi4-network-performance/pc-pi4-fullduplex-optimization-paket-steering1.png)](/assets/images/articles/pi4-network-performance/pc-pi4-fullduplex-optimization-paket-steering1.png)
+[![pc-pi4-fullduplex](/images/articles/pi4-network-performance/pc-pi4-fullduplex-optimization-paket-steering1.png)](/images/articles/pi4-network-performance/pc-pi4-fullduplex-optimization-paket-steering1.png)
 
 Windows Sender:
 
@@ -258,7 +258,7 @@ even when the CPU is idle and should not be used under normal circumstances)
 
 Increasing the CPU speed showed a negligible improvement with the Raspberry PI send-performance changing from `764` to `773 Mbits/sec`.
 
-[![pc-pi4-fullduplex](/assets/images/articles/pi4-network-performance/pc-pi4-fullduplex-optimization-cpu-overclock.png)](/assets/images/articles/pi4-network-performance/pc-pi4-fullduplex-optimization-cpu-overclock.png)
+[![pc-pi4-fullduplex](/images/articles/pi4-network-performance/pc-pi4-fullduplex-optimization-cpu-overclock.png)](/images/articles/pi4-network-performance/pc-pi4-fullduplex-optimization-cpu-overclock.png)
 
 This [article](https://qengineering.eu/overclocking-the-raspberry-pi-4.html) goes into great detail about overclocking the PI4.
 

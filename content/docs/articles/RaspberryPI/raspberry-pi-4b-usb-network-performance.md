@@ -81,7 +81,7 @@ check out this [article](raspberry-pi-4bnetwork-performance))
 
 This is a photo of the UGREEN adapter I used:
 
-[![photo-ax88179-ugreen](/assets/images/articles/pi4-usb-network-performance/ax88179-ugreen.png)](/assets/images/articles/pi4-usb-network-performance/ax88179-ugreen.png)
+[![photo-ax88179-ugreen](/images/articles/pi4-usb-network-performance/ax88179-ugreen.png)](/images/articles/pi4-usb-network-performance/ax88179-ugreen.png)
 
 The kernel recognizes the adapter with the following log message:
 
@@ -117,7 +117,7 @@ Noticeably, in all scenarios, the throughput for the PC sending data to Raspberr
 worth mentioning that the IRQ load for CPU 0 is close to 100% during test execution. This screenshot of `atop` was taken while the PI was sending but
 not receiving data streams (half-duplex): 
 
-[![photo-halfduplex-ax88179-sending-irq.png](/assets/images/articles/pi4-usb-network-performance/halfduplex-ax88179-sending-irq.png)](/assets/images/articles/pi4-usb-network-performance/halfduplex-ax88179-sending-irq.png)
+[![photo-halfduplex-ax88179-sending-irq.png](/images/articles/pi4-usb-network-performance/halfduplex-ax88179-sending-irq.png)](/images/articles/pi4-usb-network-performance/halfduplex-ax88179-sending-irq.png)
 
 In order, to get a better understanding of the send-performance of the adapter, I also ran the test with the following parameters which
 throttles the PC send-throughput to approximately 400 Mbit/s:   
@@ -145,7 +145,7 @@ problem here.
 
 The CableCreation adapter based on the RTL8153 chip:
 
-[![photo-rtl5183-cablecreation](/assets/images/articles/pi4-usb-network-performance/rtl8153-cablecreation.png)](/assets/images/articles/pi4-usb-network-performance/rtl8153-cablecreation.png)
+[![photo-rtl5183-cablecreation](/images/articles/pi4-usb-network-performance/rtl8153-cablecreation.png)](/images/articles/pi4-usb-network-performance/rtl8153-cablecreation.png)
 
 (Note that CableCreation seems to no longer produce this Realtek based adapter)
 
@@ -181,7 +181,7 @@ It is obvious that the rtl8153a based adapter performs much better than the ax88
 adapter is able to reach 1Gbit/s in half-duplex in both directions. Even in full-duplex the throughput is still much better than with the
 ASIX adapter. It is also remarkable that the interrupt rate in the half-duplex PI send-scenario stays very low:
 
-[![photo-halfduplex-rtl8153-sending-irq.png](/assets/images/articles/pi4-usb-network-performance/halfduplex-rtl8153-sending-irq.png)](/assets/images/articles/pi4-usb-network-performance/halfduplex-rtl8153-sending-irq.png)
+[![photo-halfduplex-rtl8153-sending-irq.png](/images/articles/pi4-usb-network-performance/halfduplex-rtl8153-sending-irq.png)](/images/articles/pi4-usb-network-performance/halfduplex-rtl8153-sending-irq.png)
 
 ## Summary
 

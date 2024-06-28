@@ -11,35 +11,35 @@ weight: 1
 
 1. Open the EC2 Dashboard
 
-[![Open EC2 Dashboard](/assets/images/howto/cloud/create-ec2/open-ec2-dashboard.png)](/assets/images/howto/cloud/create-ec2/open-ec2-dashboard.png)
+[![Open EC2 Dashboard](/images/howto/cloud/create-ec2/open-ec2-dashboard.png)](/images/howto/cloud/create-ec2/open-ec2-dashboard.png)
 
 2. Click on Launch Instance
 
-[![Open EC2 Dashboard](/assets/images/howto/cloud/create-ec2/click-launch-instance.png)](/assets/images/howto/cloud/create-ec2/click-launch-instance.png)
+[![Open EC2 Dashboard](/images/howto/cloud/create-ec2/click-launch-instance.png)](/images/howto/cloud/create-ec2/click-launch-instance.png)
 
 3. Select Ubuntu Server 20.04 LTS
 
-[![Open EC2 Dashboard](/assets/images/howto/cloud/create-ec2/select-ubuntu-server-2004lts.png)](/assets/images/howto/cloud/create-ec2/select-ubuntu-server-2004lts.png)
+[![Open EC2 Dashboard](/images/howto/cloud/create-ec2/select-ubuntu-server-2004lts.png)](/images/howto/cloud/create-ec2/select-ubuntu-server-2004lts.png)
 
 4. Choose Instance Type
 
 Select an appropriately sized machine for your workload. Below I chose `t2.large` which comes with 2 Virtual CPUs and 8GB of RAM.
 Click "Next: Configure Instance Details".
 
-[![Open EC2 Dashboard](/assets/images/howto/cloud/create-ec2/choose-instance-type.png)](/assets/images/howto/cloud/create-ec2/choose-instance-type.png)
+[![Open EC2 Dashboard](/images/howto/cloud/create-ec2/choose-instance-type.png)](/images/howto/cloud/create-ec2/choose-instance-type.png)
 
 5. Configure Instance
 
 The default configuration is fine for most workloads. Make sure "Auto-assign Public IP" is enabled for the selected Network.
 Click "Next: Add Storage".
 
-[![Open EC2 Dashboard](/assets/images/howto/cloud/create-ec2/configure-instance.png)](/assets/images/howto/cloud/create-ec2/configure-instance.png)
+[![Open EC2 Dashboard](/images/howto/cloud/create-ec2/configure-instance.png)](/images/howto/cloud/create-ec2/configure-instance.png)
 
 6. Add Storage
 
 Adjust the size of the root volume to your needs. I chose a size of `32GB` in the screenshot. Click "Next: Add Tags". 
 
-[![Open EC2 Dashboard](/assets/images/howto/cloud/create-ec2/add-storage.png)](/assets/images/howto/cloud/create-ec2/add-storage.png)
+[![Open EC2 Dashboard](/images/howto/cloud/create-ec2/add-storage.png)](/images/howto/cloud/create-ec2/add-storage.png)
 
 7. Add Tags
 
@@ -54,13 +54,13 @@ Note: It is a good practice to make the rules as restrictive as possible. For ex
 
 [Learn more](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/using-network-security.html) about security groups.
 
-[![Open EC2 Dashboard](/assets/images/howto/cloud/create-ec2/configure-security-group.png)](/assets/images/howto/cloud/create-ec2/configure-security-group.png)
+[![Open EC2 Dashboard](/images/howto/cloud/create-ec2/configure-security-group.png)](/images/howto/cloud/create-ec2/configure-security-group.png)
 
 9. Review Instance
 
 If you like you can review the instance details before creating it. Click "Launch".
 
-[![Open EC2 Dashboard](/assets/images/howto/cloud/create-ec2/review-instance.png)](/assets/images/howto/cloud/create-ec2/review-instance.png)
+[![Open EC2 Dashboard](/images/howto/cloud/create-ec2/review-instance.png)](/images/howto/cloud/create-ec2/review-instance.png)
 
 10. SSH Key Pair
 
@@ -68,7 +68,7 @@ Either create a new or use an existing SSH key pair. If you create a new key pai
 
 Warning: This is the time you will be able to download the private key
 
-[![Open EC2 Dashboard](/assets/images/howto/cloud/create-ec2/key-pair-dialog.png)](/assets/images/howto/cloud/create-ec2/key-pair-dialog.png)
+[![Open EC2 Dashboard](/images/howto/cloud/create-ec2/key-pair-dialog.png)](/images/howto/cloud/create-ec2/key-pair-dialog.png)
 
 11. Launch
 
