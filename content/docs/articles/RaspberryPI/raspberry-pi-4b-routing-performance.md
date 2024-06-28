@@ -26,7 +26,7 @@ To make sure the PCs can deliver at full-duplex speed and are not a bottleneck t
 I ran a reference PC to PC measurement with iperf3 where each PC is sending with 10 concurrent TCP streams.
 The following screenshot shows the measured throughput on one of the PCs.
 
-[![pc-pc-fullduplex](/assets/images/articles/pi4-routing-performance/pc-to-pc-reference.png)](/assets/images/articles/pi4-routing-performance/pc-to-pc-reference.png)
+[![pc-pc-fullduplex](/images/articles/pi4-routing-performance/pc-to-pc-reference.png)](/images/articles/pi4-routing-performance/pc-to-pc-reference.png)
 
 These numbers give confidence that the PCs can provide an appropriate test harness for the Raspberry PI.
 
@@ -54,7 +54,7 @@ iperf3.exe -c 10.0.0.100 -P 10 -t 65 -O 5
 
 Result:
 
-[![pc-pc-halfduplex](/assets/images/articles/pi4-routing-performance/pc-a-sendto-b-half-duplex.png)](/assets/images/articles/pi4-routing-performance/pc-a-sendto-b-half-duplex.png  )
+[![pc-pc-halfduplex](/images/articles/pi4-routing-performance/pc-a-sendto-b-half-duplex.png)](/images/articles/pi4-routing-performance/pc-a-sendto-b-half-duplex.png  )
 
 ```text
 [ ID] Interval           Transfer     Bandwidth
@@ -125,7 +125,7 @@ Results:
 
 Throughput with SFQ and 100Mbit/s target upload bandwidth:
 
-[![pc-pc-fullduplex](/assets/images/articles/pi4-routing-performance/pc-b-100mbit-full-duplex.png)](/assets/images/articles/pi4-routing-performance/pc-b-100mbit-full-duplex.png  )
+[![pc-pc-fullduplex](/images/articles/pi4-routing-performance/pc-b-100mbit-full-duplex.png)](/images/articles/pi4-routing-performance/pc-b-100mbit-full-duplex.png  )
 
 ## Summary
 

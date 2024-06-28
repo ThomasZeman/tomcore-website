@@ -28,7 +28,7 @@ All Raspberry PIs can boot from an SD Card on which you need to install an opera
 done on the PI itself but requires a separate machine with an SD Card reader. Here we are using Windows and an
 external USB SD Card reader but the procedure is the same on Mac OS or Linux.
 
-[![photo-cardreader-ugreen](/assets/images/howto/raspberrypi/cardreader-ugreen.png)](/assets/images/howto/raspberrypi/cardreader-ugreen.png)
+[![photo-cardreader-ugreen](/images/howto/raspberrypi/cardreader-ugreen.png)](/images/howto/raspberrypi/cardreader-ugreen.png)
 
 If you do not have an SD Card yet, have a look at 
 this [article](https://www.tomshardware.com/best-picks/raspberry-pi-microsd-cards) on Tom's Hardware which discusses the suitability of a 
@@ -243,7 +243,7 @@ Once unpacked, you will see the content of the archive in the File Explorer Wind
 Remove the SD Card from the reader, insert it into the SD Card slot on the Raspberry PI and power it up. You will see
 Alpine booting in Diskless-mode:
 
-[![photo-cardreader-ugreen](/assets/images/howto/raspberrypi/alpine-boot.png)](/assets/images/howto/raspberrypi/alpine-boot.png)
+[![photo-cardreader-ugreen](/images/howto/raspberrypi/alpine-boot.png)](/images/howto/raspberrypi/alpine-boot.png)
 
 Login as `root` with no password.
 

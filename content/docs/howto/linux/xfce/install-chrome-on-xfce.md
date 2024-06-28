@@ -38,7 +38,7 @@ sudo apt update
 
 If Chrome was installed correctly, you should notice a new source entry (`Hit:5` below) in the update output:
 
-[![Remote Desktop](/assets/images/howto/linux/xfce/install-chrome-update.png)](/assets/images/howto/linux/xfce/install-chrome-update.png)
+[![Remote Desktop](/images/howto/linux/xfce/install-chrome-update.png)](/images/howto/linux/xfce/install-chrome-update.png)
 
 Upgrade packages
 

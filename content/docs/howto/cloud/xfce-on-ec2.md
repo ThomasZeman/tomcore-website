@@ -50,7 +50,7 @@ sudo apt-get install xfce4 xfce4-goodies xfce4-terminal xrdp
 
 During the installation you will need to set the default display manager to `lightdm`
 
-[![Open EC2 Dashboard](/assets/images/howto/cloud/ec2-xfce/configure-displaymanager.png)](/assets/images/howto/cloud/ec2-xfce/configure-displaymanager.png)
+[![Open EC2 Dashboard](/images/howto/cloud/ec2-xfce/configure-displaymanager.png)](/images/howto/cloud/ec2-xfce/configure-displaymanager.png)
 
 6. Configure XServer
 
@@ -75,12 +75,12 @@ ssh ubuntu@<server-ip|FQDN> -i <private-pem-key-file> -L 2000:127.0.0.1:3389 -N
 
 Start the Remote Desktop application. As remote address provide the local endpoint of the SSH tunnel.
 
-[![Open Remote Desktop](/assets/images/howto/cloud/ec2-xfce/open-remote-desktop.png)](/assets/images/howto/cloud/ec2-xfce/open-remote-desktop.png)
+[![Open Remote Desktop](/images/howto/cloud/ec2-xfce/open-remote-desktop.png)](/images/howto/cloud/ec2-xfce/open-remote-desktop.png)
 
 Click "Connect" and provide your username (default is `ubuntu`) and password (as set in step 4) in the login dialog.
 
-[![Remote Desktop](/assets/images/howto/cloud/ec2-xfce/login-xrdp.png)](/assets/images/howto/cloud/ec2-xfce/login-xrdp.png)
+[![Remote Desktop](/images/howto/cloud/ec2-xfce/login-xrdp.png)](/images/howto/cloud/ec2-xfce/login-xrdp.png)
 
 If all works well, you should see a desktop with a few desktop icons, a launcher at the bottom and menu bar at the top.
 
-[![Remote Desktop](/assets/images/howto/cloud/ec2-xfce/xfce4-xrdp.png)](/assets/images/howto/cloud/ec2-xfce/xfce4-xrdp.png)
+[![Remote Desktop](/images/howto/cloud/ec2-xfce/xfce4-xrdp.png)](/images/howto/cloud/ec2-xfce/xfce4-xrdp.png)
