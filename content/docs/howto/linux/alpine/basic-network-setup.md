@@ -236,6 +236,10 @@ Next, copy the public key to the remote device by using the `ssh-copy-id` comman
 ```shell
 tom@workhaus:~$ ssh-copy-id tom@192.168.8.183
 /usr/bin/ssh-copy-id: INFO: Source of key(s) to be installed: "/home/tom/.ssh/id_rsa.pub"
+The authenticity of host '192.168.8.183 (192.168.8.183)' can't be established.
+ED25519 key fingerprint is SHA256:hi8fomuuRM1abBIMqXs6D5mSVbuOa5n3j0Xhj1FAVfg.
+This key is not known by any other names
+Are you sure you want to continue connecting (yes/no/[fingerprint])? yes
 /usr/bin/ssh-copy-id: INFO: attempting to log in with the new key(s), to filter out any that are already installed
 /usr/bin/ssh-copy-id: INFO: 1 key(s) remain to be installed -- if you are prompted now it is to install the new keys
 tom@192.168.8.183's password:
@@ -246,7 +250,7 @@ Now try logging into the machine, with:   "ssh 'tom@192.168.8.183'"
 and check to make sure that only the key(s) you wanted were added.
 ```
 
-The command `ssh-copy-id tom@192.168.8.183` copies the public key to the remote device. Replace `192.168.8.183` with the IP address of your device.
+The command `ssh-copy-id tom@192.168.8.183` copies the public key to the remote device. Replace `192.168.8.183` with the IP address of your device. You might see a warning that the host is unknown to your client.
 
 ```shell
 tom@workhaus:~$ ssh tom@192.168.8.183
@@ -326,7 +330,7 @@ First, open the OpenSSH configuration file:
 
 ```shell
 # Open the openssh configuration
-localhost:~# vi /etc/ssh/sshd_config
+localhost:~# sudo vi /etc/ssh/sshd_config
 ```
 
 Make sure the following config lines are set:
@@ -345,7 +349,7 @@ PermitEmptyPasswords no
 After making these changes, restart the SSH service to apply the new configuration:
 
 ```shell
-localhost:~# /etc/init.d/sshd restart
+localhost:~# sudo /etc/init.d/sshd restart
  * Stopping sshd ...                                             [ ok ]
  * Starting sshd ...                                             [ ok ]
  ```

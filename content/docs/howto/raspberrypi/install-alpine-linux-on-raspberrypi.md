@@ -337,6 +337,8 @@ pi:/# rc-update add swap boot
 pi:/# export FORCE_BOOTFS=1
 # Optional: Declare the swap partition
 pi:/# export SWAP_DEVICES=/dev/mmcblk0p3
+# Alpine 3.16 will not automatically create this directory. Alpine 3.20 does.
+pi:/# mkdir /mnt/boot
 # Run installation script
 pi:/# setup-disk /mnt
 ```
