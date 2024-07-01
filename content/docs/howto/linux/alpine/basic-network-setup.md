@@ -1,4 +1,4 @@
-# Alpine Linux Basic Network Setup (WIP)
+# Alpine Linux Basic Network Setup
 
 This how-to guide walks you through the basic setup of your Alpine Linux to function as a headless general-purpose router or other network device.
 The following instructions are based on Alpine running on a Raspberry PI but should work with minimal or no modifications on other hardware.
