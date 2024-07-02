@@ -173,7 +173,7 @@ docker build --tag dnsmasq_lan .
 ## Run
 
 ```shell
-docker run -d --name dnsmasq_lan --network host -v "/home/tom/docker/dnsmasq.lan/dnsmasq.conf:/etc/dnsmasq.conf" --cap-add=NET_ADMIN dnsmasq.lan
+docker run -d --name dnsmasq_lan --network host -v "/home/tom/docker/dnsmasq.lan/dnsmasq.conf:/etc/dnsmasq.conf" --cap-add=NET_ADMIN dnsmasq_lan
 
 docker run -d --name pihole_lan --network pihole_lan --ip 10.1.0.2 -e TZ='Australia/Sydney' -e WEBPASSWORD='TomPalme2' -v "$(pwd)/etc-pihole:/etc/pihole" -v "$(pwd)/etc-dnsmasq.d:/etc/dnsmasq.d" --restart unless-stopped pihole/pihole:latest
 ```
