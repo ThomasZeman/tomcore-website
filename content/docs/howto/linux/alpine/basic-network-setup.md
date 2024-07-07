@@ -18,6 +18,13 @@ localhost:~# apk add nano
 Executing busybox-1.36.1-r29.trigger
 OK: 318 MiB in 71 packages
 ```
+## Set hostname
+
+Set the hostname of your device by executing the following:
+
+```shell
+localhost:~# echo "router" >/etc/hostname
+```
 
 ## Change login message
 
