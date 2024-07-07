@@ -1,4 +1,6 @@
-# WIP
+# Route VLAN via Wireguard interface
+
+
 
 Add new routing table (Example 1701 name 'wg')
 

@@ -196,3 +196,11 @@ docker run --network build -it alpine sh
 ```shell
 tcpdump not port 22 and icmp or arp -n -i any
 ```
+
+# IP6
+
+Debug DHCP6 and ICMP6
+
+```shell
+ tcpdump -n -i any udp port 546 or 547 or icmp6
+ ```
