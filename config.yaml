@@ -29,11 +29,14 @@ languages:
 menu:
   # before: []
   after:
-    - name: "Thomas on Github"
-      url: "https://github.com/ThomasZeman"
+    - name: "My Sokoban Game"
+      url: "https://lagerhaus.gg"
       weight: 11
-    - name: "Thomas on Twitter"
-      url: "https://twitter.com/ThomasZeman"
+    - name: "Me on Github"
+      url: "https://github.com/ThomasZeman"
+      weight: 12
+    - name: "Me on X"
+      url: "https://x.com/ThomasZeman"
       weight: 13
     - name: ""
       post: <script type='text/javascript' src='https://storage.ko-fi.com/cdn/widget/Widget_2.js'></script><script type='text/javascript'>kofiwidget2.init('Support my work', '#000000', 'C0C4GEP4X');kofiwidget2.draw();</script>
