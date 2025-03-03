@@ -5,9 +5,10 @@
   "source": [
     "src/index.html"
   ],
+  "homepage": "/tools/skype-conversation-viewer",
   "scripts": {
     "start": "parcel src/index.html --open",
-    "build": "parcel build src/index.html --public-url ./"
+    "build": "parcel build src/index.html --public-url /tools/skype-conversation-viewer/"
   },
   "dependencies": {
     "goober": "^2.1.16",
