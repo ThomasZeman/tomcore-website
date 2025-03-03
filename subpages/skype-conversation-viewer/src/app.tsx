@@ -24,7 +24,7 @@ const AppInfo = () => (
                 <strong>Chat History Request:</strong> Use Microsoft’s official export tool to request your Skype chat history <a href={"https://secure.skype.com/en/data-export"} target="_blank" rel="noopener noreferrer">Skype Data Export</a>
             </li>
             <li>
-                <strong>Unpacking:</strong> The exported file is a compressed tar archive. Unpack it using a compatible tool on your local hard drive. If unsure follow this <a href={"https://www.wikihow.com/Save-a-Text-Chat-on-Skype#:~:text=Sign%20into%20your%20Skype%20account,into%20a%20single%20downloadable%20file."} target="_blank" rel="noopener noreferrer">guide</a>
+                <strong>Unpacking:</strong> The exported file is a compressed tar archive. Unpack it using a compatible tool on your local hard drive. If unsure follow this <a href={"https://www.wikihow.com/Save-a-Text-Chat-on-Skype#:~:text=Sign%20into%20your%20Skype%20account,into%20a%20single%20downloadable%20file."} target="_blank" rel="noopener noreferrer">guide</a>. You will need the <code>messages.json</code> file to load your chat history.
             </li>
             <li>
                 <strong>Browser Login:</strong> Make sure you are logged into <a href={"https://web.skype.com"} target="_blank" rel="noopener noreferrer">web.skype.com</a> in this browser (eg. another tab). Otherwise, content such as images will not load.
