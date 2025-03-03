@@ -38,6 +38,9 @@ menu:
     - name: "Me on X"
       url: "https://x.com/ThomasZeman"
       weight: 13
+    - name: "Skype Conversation Viewer"
+      url: "/tools/skype-conversation-viewer"
+      weight: 14
     - name: ""
       post: <script type='text/javascript' src='https://storage.ko-fi.com/cdn/widget/Widget_2.js'></script><script type='text/javascript'>kofiwidget2.init('Support my work', '#000000', 'C0C4GEP4X');kofiwidget2.draw();</script>
       weight: 14
