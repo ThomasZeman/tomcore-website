@@ -4,3 +4,6 @@ static/assets
 public
 push.bat
 .hugo_build.lock
+node_modules
+.parcel-cache
+dist
