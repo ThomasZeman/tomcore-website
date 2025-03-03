@@ -1,37 +1,11 @@
-import {h, render, Fragment, JSX} from 'preact';
-import {TargetedEvent} from 'preact/compat';
-import { useState, useEffect } from 'preact/hooks';
+import {h, render, JSX} from 'preact';
+import { useState } from 'preact/hooks';
 import { Container, FileInput, Title } from './basic-components.js';
 import { ConversationList } from './conversation-list.js';
 import { ConversationView } from './conversation-view.js';
 import { Conversation, MessagesExport } from './types.js';
 import { css } from 'goober';
-
-/* --- New Components --- */
-
-/**
- * KofiWidget loads the Ko-fi donation widget scripts into a container.
- */
-const KofiWidget = () => {
-    useEffect(() => {
-        const widgetContainer = document.getElementById("kofi-widget");
-        if (widgetContainer) {
-            // Remove previous children if any
-            widgetContainer.innerHTML = "";
-            const script1 = document.createElement("script");
-            script1.type = "text/javascript";
-            script1.src = "https://storage.ko-fi.com/cdn/widget/Widget_2.js";
-            script1.async = true;
-            widgetContainer.appendChild(script1);
-
-            const script2 = document.createElement("script");
-            script2.type = "text/javascript";
-            script2.text = "kofiwidget2.init('Support my work', '#000000', 'C0C4GEP4X');kofiwidget2.draw();";
-            widgetContainer.appendChild(script2);
-        }
-    }, []);
-    return <div id="kofi-widget"></div>;
-};
+import KofiButton from "kofi-button"
 
 const AppInfo = () => (
     <div
@@ -58,6 +32,9 @@ const AppInfo = () => (
                 <strong>Note:</strong> This app runs in your <strong>browser only</strong> and does not send any data to a server.
             </li>
             <li>
+                <strong>Render:</strong> Use your browser print function to save the conversation for example as PDF or print it.
+            </li>
+            <li>
                 <strong>Author:</strong> This app was created by Thomas Zeman. The source is on <a href={"https://github.com/thomaszeman/tomcore-website"} target="_blank" rel="noopener noreferrer">GitHub</a>
             </li>
             <li>
@@ -74,11 +51,9 @@ const AppInfo = () => (
                 </a>
             </li>
         </ul>
-        <KofiWidget />
+        <KofiButton color="#0a9396" title="Support my work" kofiID="C0C4GEP4X" />
     </div>
 );
-
-/* --- Main App Component --- */
 
 export const App = () => {
     const [messagesExport, setMessagesExport] = useState<MessagesExport | null>(null);

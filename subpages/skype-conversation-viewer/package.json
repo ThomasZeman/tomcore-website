@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "goober": "^2.1.16",
+    "kofi-button": "^1.1.1",
     "preact": "^10.26.4"
   },
   "devDependencies": {
@@ -21,6 +22,7 @@
   },
   "alias": {
     "preact/jsx-dev-runtime": "preact/jsx-runtime",
-    "preact/jsx-runtime": "preact/jsx-runtime"
+    "preact/jsx-runtime": "preact/jsx-runtime",
+    "react": "preact/compat"
   }
 }
