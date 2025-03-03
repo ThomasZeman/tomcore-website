@@ -18,6 +18,7 @@ const AppInfo = () => (
       color: #333;
     `}
     >
+        <strong>Instructions:</strong>
         <ul>
             <li>
                 <strong>Chat History Request:</strong> Use Microsoft’s official export tool to request your Skype chat history <a href={"https://secure.skype.com/en/data-export"} target="_blank" rel="noopener noreferrer">Skype Data Export</a>
@@ -35,7 +36,7 @@ const AppInfo = () => (
                 <strong>Render:</strong> Use your browser print function to save the conversation for example as PDF or print it.
             </li>
             <li>
-                <strong>Author:</strong> This app was created by Thomas Zeman. The source is on <a href={"https://github.com/thomaszeman/tomcore-website"} target="_blank" rel="noopener noreferrer">GitHub</a>
+                <strong>Project:</strong> The author of this app is Thomas Zeman. You can find the source on <a href={"https://github.com/thomaszeman/tomcore-website"} target="_blank" rel="noopener noreferrer">GitHub</a>. For any questions or feedback please use the GitHub issue tracker.
             </li>
             <li>
                 <strong>No Warranty: This tool is provided "AS IS" with absolutely no warranty.</strong>
@@ -52,6 +53,11 @@ const AppInfo = () => (
             </li>
         </ul>
         <KofiButton color="#0a9396" title="Support my work" kofiID="C0C4GEP4X" />
+        <p/>
+        <strong>Versions:</strong>
+        <ul>
+            <li>03/03/2025: Initial release</li>
+        </ul>
     </div>
 );
 
