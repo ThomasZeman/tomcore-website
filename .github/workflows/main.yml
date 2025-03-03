@@ -3,7 +3,7 @@ name: Build and Deploy
 on:
   push:
     branches: [ main ]
-    paths: [ 'archetypes/**', 'content/**', 'layouts/**', 'static/**', '.github/workflows/skype-conversation-viewer.yml' ]
+    paths: [ 'archetypes/**', 'content/**', 'layouts/**', 'static/**', '.github/workflows/main.yml' ]
 
 jobs:
   build:
