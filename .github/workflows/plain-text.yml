@@ -26,6 +26,4 @@ jobs:
 
       - name: Set cache-control headers
         run: |
-          aws s3 cp s3://${{ secrets.AWS_BUCKET_NAME }}/ s3://${{ secrets.AWS_BUCKET_NAME }}/ --exclude "*" --include "*.html" --recursive --metadata-directive REPLACE --content-type "text/html" --cache-control "max-age=60" 
-          aws s3 cp s3://${{ secrets.AWS_BUCKET_NAME }}/ s3://${{ secrets.AWS_BUCKET_NAME }}/ --exclude "*" --include "*.css" --recursive --metadata-directive REPLACE --content-type "text/css" --cache-control "max-age=31536000, public"
-          aws s3 cp s3://${{ secrets.AWS_BUCKET_NAME }}/ s3://${{ secrets.AWS_BUCKET_NAME }}/ --exclude "*" --include "*.js" --recursive --metadata-directive REPLACE --content-type "application/javascript" --cache-control "max-age=31536000, public"
+          aws s3 cp s3://${{ secrets.AWS_BUCKET_NAME }}/ s3://${{ secrets.AWS_BUCKET_NAME }}/ --exclude "*" --include "*.txt" --recursive --metadata-directive REPLACE --content-type "text/html" --cache-control "max-age=60" 
