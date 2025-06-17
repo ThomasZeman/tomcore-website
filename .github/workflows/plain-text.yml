@@ -22,7 +22,7 @@ jobs:
 
       - name: Deploy build to S3 bucket
         working-directory: ./subpages/plain-text
-        run: aws s3 sync ./dist/ s3://${{ secrets.AWS_BUCKET_NAME }}/text/ --delete --metadata-directive REPLACE --cache-control "max-age=3600, public"
+        run: aws s3 sync ./ s3://${{ secrets.AWS_BUCKET_NAME }}/text/ --delete --metadata-directive REPLACE --cache-control "max-age=3600, public"
 
       - name: Set cache-control headers
         run: |
