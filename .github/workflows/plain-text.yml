@@ -1,0 +1,31 @@
+name: Plain Text
+
+on:
+  push:
+    branches: [ main ]
+    paths: [ 'subpages/plain-text/**', '.github/workflows/plain-text.yml' ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: 'false'
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      - name: Deploy build to S3 bucket
+        working-directory: ./subpages/plain-text
+        run: aws s3 sync ./dist/ s3://${{ secrets.AWS_BUCKET_NAME }}/text/ --delete --metadata-directive REPLACE --cache-control "max-age=3600, public"
+
+      - name: Set cache-control headers
+        run: |
+          aws s3 cp s3://${{ secrets.AWS_BUCKET_NAME }}/ s3://${{ secrets.AWS_BUCKET_NAME }}/ --exclude "*" --include "*.html" --recursive --metadata-directive REPLACE --content-type "text/html" --cache-control "max-age=60" 
+          aws s3 cp s3://${{ secrets.AWS_BUCKET_NAME }}/ s3://${{ secrets.AWS_BUCKET_NAME }}/ --exclude "*" --include "*.css" --recursive --metadata-directive REPLACE --content-type "text/css" --cache-control "max-age=31536000, public"
+          aws s3 cp s3://${{ secrets.AWS_BUCKET_NAME }}/ s3://${{ secrets.AWS_BUCKET_NAME }}/ --exclude "*" --include "*.js" --recursive --metadata-directive REPLACE --content-type "application/javascript" --cache-control "max-age=31536000, public"
