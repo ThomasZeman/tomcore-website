@@ -29,20 +29,23 @@ languages:
 menu:
   # before: []
   after:
-    - name: "My Sokoban Game"
-      url: "https://lagerhaus.gg"
-      weight: 11
+    - name: "Find me on LinkedIn"
+      url: "https://www.linkedin.com/in/thomas-zeman-1ee7/"
+      weight: 10
     - name: "Me on Github"
       url: "https://github.com/ThomasZeman"
+      weight: 11
+    - name: "Boardbash - Board Games"
+      url: "https://nocap.gg/boardbash"
       weight: 12
-    - name: "Me on X"
-      url: "https://x.com/ThomasZeman"
+    - name: "My Sokoban Game"
+      url: "https://nocap.gg/lagerhaus"
       weight: 13
     - name: "Skype Conversation Viewer"
       url: "/tools/skype-conversation-viewer"
       weight: 14
     - name: ""
-      post: <script type='text/javascript' src='https://storage.ko-fi.com/cdn/widget/Widget_2.js'></script><script type='text/javascript'>kofiwidget2.init('Support my work', '#000000', 'C0C4GEP4X');kofiwidget2.draw();</script>
+      post: <script type='text/javascript' src='https://storage.ko-fi.com/cdn/widget/Widget_2.js'></script><script type='text/javascript'>kofiwidget2.init('Support my work', '#29abe0', 'C0C4GEP4X');kofiwidget2.draw();</script>
       weight: 15
 
 params:
