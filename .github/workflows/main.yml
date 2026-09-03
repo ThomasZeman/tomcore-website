@@ -1,9 +1,10 @@
 name: Build and Deploy
 
 on:
+  workflow_dispatch:
   push:
     branches: [ main ]
-    paths: [ 'archetypes/**', 'content/**', 'layouts/**', 'static/**', '.github/workflows/main.yml', 'config.yaml' ]
+    paths: [ 'archetypes/**', 'content/**', 'layouts/**', 'static/**', 'themes/**', '.gitmodules', '.github/workflows/main.yml', 'config.yaml' ]
 
 jobs:
   build:

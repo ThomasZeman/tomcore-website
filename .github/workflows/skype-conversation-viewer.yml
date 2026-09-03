@@ -1,6 +1,7 @@
 name: Skype Conversation Viewer
 
 on:
+  workflow_dispatch:
   push:
     branches: [ main ]
     paths: [ 'subpages/skype-conversation-viewer/**', '.github/workflows/skype-conversation-viewer.yml' ]
