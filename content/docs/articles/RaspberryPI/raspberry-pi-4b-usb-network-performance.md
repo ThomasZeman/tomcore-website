@@ -4,6 +4,10 @@ title: Raspberry PI 4B USB Network Performance
 ---
 # Raspberry PI 4B USB Network Performance
 
+{{< hint info >}}
+**Measured in January 2022** on Alpine Linux 3.15 with kernel 5.15. Newer kernels and firmware may perform differently, but the method and the relative findings still apply.
+{{< /hint >}}
+
 This article discusses the performance of two USB 3.0 Gigabit network adapters connected to the Raspberry Pi 4B. I ran all measurements on Alpine Linux 3.15 and a 5.15.4-0-rpi4 aarch64 kernel. My measurement tool of choice was iperf3. As communication peer, I used a Windows 10 PC.
 
 

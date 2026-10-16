@@ -35,8 +35,7 @@ never rebuilds the SPA and vice versa.
 ├── content/                           # Markdown content — this is the site
 │   ├── _index.md                      # Home page (type: docs)
 │   └── docs/
-│       ├── articles/                  # Long-form write-ups (Raspberry Pi networking…)
-│       └── howto/                     # Guides: cloud/, linux/{alpine,xfce}/, raspberrypi/
+│       └── articles/                  # Long-form write-ups (Raspberry Pi networking…)
 ├── layouts/
 │   └── partials/docs/inject/
 │       └── content-after.html         # Theme hook: Support/License footer + clipboard.js
