@@ -79,7 +79,7 @@ As described in the Raspberry PI4 network performance article, I have set the PC
 
 The Windows 10 PC and the Raspberry PI are sending with ten concurrent TCP streams for 65 seconds, with the throughput of the
 first 5 seconds not being considered for the overall test result. (For details on the iperf command line parameters used for these tests, please
-check out this [article](raspberry-pi-4bnetwork-performance))
+check out this [article](raspberry-pi-4b-network-performance))
 
 ## ASIX ax88179 USB 3.0 Gigabit Network Adapter
 
