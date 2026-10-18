@@ -52,6 +52,10 @@ There are four building blocks:
   VPN client.
 - **No setup on the device.** A guest picks the "Frankfurt" network and is done. Leaving that
   network turns the "VPN" off.
+- **Casting just works.** When you cast from your phone to a Chromecast or smart TV, the TV
+  fetches the stream itself; the phone only acts as the remote control. With a VPN app on the
+  phone, the TV would still stream from your real location. With both on the "Frankfurt" network,
+  they find each other as usual and the TV streams from Frankfurt.
 - **One tunnel for every device.** Credentials live on the router, not on each phone.
 
 ## What you need
