@@ -10,7 +10,7 @@ Hey, I'm Thomas — I work on large-scale systems by day and tinker with network
 ## Projects
 
 - [Lagerhaus](https://nocap.gg/lagerhaus) — a Sokoban puzzle game
-- [Board Bash](https://nocap.gg/boardbash) — a multiplayer board game
+- [Boardbash](https://nocap.gg/boardbash) — a multiplayer board game
 - [Skype Conversation Viewer](/tools/skype-conversation-viewer) — read your exported Skype chats in the browser; nothing is uploaded
 
 ## Articles

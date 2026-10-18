@@ -4,9 +4,9 @@ title: Raspberry PI 4B Routing Performance
 ---
 # Raspberry PI 4B Routing Network Performance
 
-{{< hint info >}}
+{{% hint info %}}
 **Measured in January 2022** on Alpine Linux 3.15 with kernel 5.15. Newer kernels and firmware may perform differently, but the method and the relative findings still apply.
-{{< /hint >}}
+{{% /hint %}}
 
 This article discusses the IPv4 routing performance the Raspberry PI 4B shows between two network interfaces. One interface is
 the built-in Ethernet port, and the other is a USB3.0 Ethernet adapter based on the Realtek rtl8153a chip. The rtl8153a

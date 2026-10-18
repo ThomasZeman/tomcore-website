@@ -4,9 +4,9 @@ title: Raspberry PI 4B Network Performance
 ---
 # Raspberry PI 4B Network Performance
 
-{{< hint info >}}
+{{% hint info %}}
 **Measured in January 2022** on Alpine Linux 3.15 with kernel 5.15. Newer kernels and firmware may perform differently, but the method and the relative findings still apply.
-{{< /hint >}}
+{{% /hint %}}
 
 This article discusses the network performance of the built-in ethernet controller of the Raspberry Pi 4B.
 
