@@ -5,14 +5,23 @@ draft: true
 ---
 # A Wi-Fi Network in Another Country
 
-What if your home had a second Wi-Fi network, and every device that joined it behaved as if it were
-plugged in somewhere else in the world? A TV, a games console or a guest's phone connects to it like
-any other Wi-Fi network. It needs no VPN app and no configuration, and as far as the internet can tell,
-it is in Frankfurt (or wherever you choose), not in Sydney.
+{{% hint info %}}
+**Work in progress, October 2026.** This article describes the setup I am about to build on my OpenWrt router. The
+configuration below is planned but not yet tested end to end. I will update the article once everything runs and I
+have verified it.
+{{% /hint %}}
 
-This article describes how to build that with a router running [OpenWrt](https://openwrt.org/), a
-WireGuard tunnel and a couple of Wi-Fi access points. Every piece is standard, but few people realize
-that you can combine them like this.
+This article describes how I want to add a second Wi-Fi network to my home whose traffic leaves the house in another
+country. Every device which joins this network, for example a TV, a games console or the phone of a guest, behaves
+as if it was connected somewhere else in the world. It needs no VPN app and no configuration on the device, and as far
+as the internet can tell, it is in Frankfurt (or wherever the other end of the tunnel is) and not in Sydney.
+
+All building blocks are standard: a router running [OpenWrt](https://openwrt.org/), a
+[WireGuard](https://www.wireguard.com/) tunnel and a couple of Wi-Fi access points. However, I have the impression
+that not many people are aware that you can combine them like this.
+
+The router is my Raspberry PI 4B with OpenWrt. If you haven't read how I set it up yet, I suggest starting with
+[OpenWrt on a Raspberry PI 4B: Essentials](openwrt-raspberry-pi-4b-essentials).
 
 ## The idea
 
@@ -33,43 +42,40 @@ flowchart LR
   end
 {{< /mermaid >}}
 
-There are four building blocks:
+The setup consists of four parts:
 
-1. **A VLAN for the "remote" network.** The access points put everything that joins the "Frankfurt"
-   Wi-Fi network on VLAN 2. Normal Wi-Fi traffic stays untagged. Both share the same cables and switches.
-2. **A permanent WireGuard tunnel** from your router to a WireGuard server at the remote location.
-   That can be a family member's home router, a small cloud VM, or a commercial VPN provider that
-   supports WireGuard.
-3. **Policy-based routing on the router.** Traffic that arrives from VLAN 2 is routed into the tunnel.
-   Everything else uses your normal internet connection.
-4. **A firewall kill switch.** VLAN 2 may only send traffic into the tunnel. If the tunnel is down,
-   devices on VLAN 2 have no internet at all, rather than silently falling back to your local
-   connection.
+1. **A [VLAN](https://en.wikipedia.org/wiki/VLAN) for the "remote" network.** The access points put every device
+   which joins the "Frankfurt" Wi-Fi network on VLAN 2. Normal Wi-Fi traffic stays untagged. Both share the same
+   cables and switches.
+2. **A permanent WireGuard tunnel** from my router to a WireGuard server at the remote location. That can be the
+   home router of a family member, a small cloud VM or a commercial VPN provider which supports WireGuard.
+3. **Policy-based routing on the router.** Traffic arriving from VLAN 2 is routed into the tunnel. Everything else
+   uses the normal internet connection.
+4. **A firewall kill switch.** VLAN 2 may only send traffic into the tunnel. If the tunnel is down, devices on
+   VLAN 2 have no internet at all instead of silently falling back to the local connection.
 
 ## Why not just use a VPN app?
 
-- **Many devices can't run one.** Smart TVs, streaming sticks, consoles and printers usually have no
-  VPN client.
-- **No setup on the device.** A guest picks the "Frankfurt" network and is done. Leaving that
-  network turns the "VPN" off.
-- **Casting just works.** When you cast from your phone to a Chromecast or smart TV, the TV
-  fetches the stream itself; the phone only acts as the remote control. With a VPN app on the
-  phone, the TV would still stream from your real location. With both on the "Frankfurt" network,
-  they find each other as usual and the TV streams from Frankfurt.
-- **One tunnel for every device.** Credentials live on the router, not on each phone.
+- Many devices cannot run one. Smart TVs, streaming sticks, consoles and printers usually have no VPN client.
+- There is no setup on the device. A guest picks the "Frankfurt" network and is done. Leaving that network turns the
+  "VPN" off.
+- Casting works without any tricks. When you cast from your phone to a Chromecast or smart TV, the TV fetches the
+  stream itself and the phone only acts as the remote control. With a VPN app on the phone, the TV would still stream
+  from the real location. With both on the "Frankfurt" network, they find each other as usual and the TV streams from
+  Frankfurt.
+- One tunnel serves every device, and the credentials live on the router and not on each phone.
 
 ## What you need
 
-- **A router that runs OpenWrt.** I use a Raspberry Pi 4 with a USB Ethernet adapter as the WAN port.
-  A dedicated OpenWrt router such as the GL.iNet Flint 2 works the same way.
-- **Access points that can map a Wi-Fi network (SSID) to a VLAN.** UniFi, Omada, OpenWrt-based
-  access points and most business-grade access points can. I use UniFi access points managed from
-  the UniFi Network application. You can put the remote network on its own access point or add it
-  as a second SSID on the access points you already have.
-- **Any switch.** You don't need a managed switch: an unmanaged switch passes the VLAN tags
-  through unchanged. The access points add the tag, and the router reads it.
-- **A WireGuard server at the remote location.** It must forward traffic from the tunnel to its
-  internet connection and apply NAT to it.
+- **A router which runs OpenWrt.** I use a Raspberry PI 4B with a USB Ethernet adapter as the WAN port. A dedicated
+  OpenWrt router such as the GL.iNet Flint 2 works the same way.
+- **Access points which can map a Wi-Fi network (SSID) to a VLAN.** UniFi, Omada, OpenWrt-based access points and most
+  business-grade access points can do that. I use UniFi access points managed from the UniFi Network application. The
+  remote network can either get its own access point or run as a second SSID on the existing ones.
+- **Any switch.** A managed switch is not required: an unmanaged switch passes the VLAN tags through unchanged. The
+  access points add the tag, and the router reads it.
+- **A WireGuard server at the remote location.** It must forward the traffic from the tunnel to its internet
+  connection and apply [NAT](https://en.wikipedia.org/wiki/Network_address_translation) to it.
 
 ## Addresses used in this article
 
@@ -79,25 +85,27 @@ There are four building blocks:
 | Remote LAN | VLAN 2 | `10.10.0.0/24`, router `10.10.0.1` |
 | WireGuard tunnel | `wgvpn` | router `10.13.37.5`, server `10.13.37.1` |
 
+(Note: these are the same subnets and the same routing table number as in my old notes for the Alpine Linux version
+of this setup, which I never finished)
+
 ## Step 1: The access points
 
 In the UniFi Network application:
 
-1. **Create a network for VLAN 2.** Under **Settings → Networks**, create a new network with
-   **VLAN ID 2**. Because the router isn't a UniFi gateway, choose the third-party gateway or
-   "VLAN only" option (the label depends on your UniFi Network version). UniFi then only tags the
-   traffic and leaves DHCP and routing to OpenWrt.
-2. **Create the Wi-Fi network.** Under **Settings → WiFi**, create an SSID such as "Frankfurt" and
-   assign it to the VLAN 2 network. To broadcast it from only one access point, restrict the SSID
-   to that access point or to an access point group.
+1. **Create a network for VLAN 2.** Under Settings → Networks, create a new network with VLAN ID 2. Since the router
+   is not a UniFi gateway, choose the third-party gateway or "VLAN only" option (the label depends on the version of
+   the UniFi Network application). UniFi then only tags the traffic and leaves DHCP and routing to OpenWrt.
+2. **Create the Wi-Fi network.** Under Settings → WiFi, create an SSID such as "Frankfurt" and assign it to the VLAN 2
+   network. In order to broadcast it from only one access point, restrict the SSID to that access point or to an
+   access point group.
 
-The access points keep broadcasting with this configuration even when the UniFi Network application
-isn't running. You only need it to make changes.
+It is worth mentioning that the access points keep broadcasting with this configuration even when the UniFi Network
+application is not running. It is only needed to make changes.
 
 ## Step 2: VLAN 2 on the router
 
-The router's LAN port carries both networks. Turn on VLAN filtering on the LAN bridge, keep VLAN 1
-untagged for the home LAN, and add VLAN 2 tagged:
+The LAN port of the router carries both networks. Turn on VLAN filtering on the LAN bridge, keep VLAN 1 untagged for
+the home LAN and add VLAN 2 tagged:
 
 ```shell
 uci set network.@device[0].vlan_filtering='1'     # the br-lan device; check with: uci show network | grep br-lan
@@ -118,7 +126,7 @@ uci set network.lan2.ipaddr='10.10.0.1/24'
 
 ## Step 3: The WireGuard tunnel
 
-Fill in the keys and the address of your WireGuard server:
+Fill in the keys and the address of the WireGuard server:
 
 ```shell
 uci set network.wgvpn=interface
@@ -134,13 +142,13 @@ uci set network.@wireguard_wgvpn[-1].route_allowed_ips='0'
 uci set network.@wireguard_wgvpn[-1].persistent_keepalive='25'
 ```
 
-`route_allowed_ips='0'` matters: without it, the tunnel would become the default route for the
-whole router, and every device in the house would end up in Frankfurt.
+Please note, `route_allowed_ips='0'` is important. Without it, the tunnel becomes the default route for the whole
+router, and every device in the house ends up in Frankfurt.
 
 ## Step 4: Route VLAN 2 into the tunnel
 
-Create a separate routing table (1701) whose only default route is the tunnel, and a rule that
-sends everything *arriving from* VLAN 2 to that table:
+Create a separate routing table (1701) whose only default route is the tunnel, and a rule which sends everything
+*arriving from* VLAN 2 to that table:
 
 ```shell
 uci add network route
@@ -153,16 +161,17 @@ uci set network.@rule[-1].lookup='1701'
 uci commit network
 ```
 
-The rule matches on the incoming interface, not on the source subnet (`from 10.10.0.0/24`). The
-router's own replies to VLAN 2 devices, such as DHCP answers, come from `10.10.0.1`. That address
-is inside the subnet, so a `from` rule would send those replies into the tunnel as well.
+The rule matches on the incoming interface and not on the source subnet (`from 10.10.0.0/24`), which is what I used
+in my old Alpine notes. The reason is that the router's own replies to devices on VLAN 2, such as DHCP answers, come
+from `10.10.0.1`. That address is inside the subnet, so a `from` rule would send those replies into the tunnel as
+well.
 
 ## Step 5: DHCP and DNS for VLAN 2
 
-Devices on VLAN 2 should also resolve names in Frankfurt. Many services choose a server location
-based on where your DNS lookup comes from. Hand out a DNS server that is reached through the
-tunnel, for example your VPN provider's DNS server or a public resolver. Turn IPv6 off on this
-network so that no traffic bypasses the IPv4-only tunnel:
+Devices on VLAN 2 should also resolve names in Frankfurt, because many services choose a server location based on
+where the DNS lookup comes from. So the DHCP server hands out a DNS server which is reached through the tunnel, for
+example the DNS server of the VPN provider or a public resolver. IPv6 is turned off on this network so that no
+traffic bypasses the IPv4-only tunnel:
 
 ```shell
 uci set dhcp.lan2=dhcp
@@ -178,9 +187,9 @@ uci commit dhcp
 
 ## Step 6: Firewall and kill switch
 
-Two new zones: `vpn` for the tunnel and `lan2` for the VLAN. The only forwarding allowed for
-`lan2` is into `vpn`. There is no path from `lan2` to the WAN, so if the tunnel goes down, VLAN 2
-devices lose internet access instead of leaking out through your local connection.
+There are two new firewall zones: `vpn` for the tunnel and `lan2` for the VLAN. The only forwarding allowed for
+`lan2` is into `vpn`. There is no path from `lan2` to the WAN, so if the tunnel goes down, devices on VLAN 2 lose
+internet access instead of leaking out through the local connection.
 
 ```shell
 uci add firewall zone
@@ -210,13 +219,13 @@ uci commit firewall
 reboot
 ```
 
-The `vpn` zone masquerades, so the remote server only ever sees the router's tunnel address
-`10.13.37.5` and needs no route back to `10.10.0.0/24`.
+The `vpn` zone masquerades, so the remote server only ever sees the tunnel address of the router (`10.13.37.5`) and
+needs no route back to `10.10.0.0/24`.
 
 ## Step 7: The remote side
 
-On a Linux machine at the remote location, the WireGuard server needs IP forwarding and NAT. A
-minimal `/etc/wireguard/wg0.conf` for `wg-quick`:
+On a Linux machine at the remote location, the WireGuard server needs IP forwarding and NAT. A minimal
+`/etc/wireguard/wg0.conf` for `wg-quick` looks like this:
 
 ```ini
 [Interface]
@@ -232,30 +241,32 @@ PublicKey = <ROUTER_PUBLIC_KEY>
 AllowedIPs = 10.13.37.5/32
 ```
 
-Replace `eth0` with the server's internet-facing interface and open UDP port 51820 to it. If the
-remote side is another OpenWrt router, the same thing takes a WireGuard interface, a firewall zone
-with masquerading, and a forwarding from that zone to `wan`.
+Replace `eth0` with the internet-facing interface of the server and open UDP port 51820 to it. If the remote side is
+another OpenWrt router, the same is achieved with a WireGuard interface, a firewall zone with masquerading and a
+forwarding from that zone to `wan`.
 
 ## Verify
 
+These are the checks I am going to run once the setup is in place:
+
 - `wg show` on the router shows a recent handshake.
 - `ip rule` shows a rule with `iif br-lan.2 lookup 1701`.
-- On a device connected to the "Frankfurt" network, [ifconfig.me](https://ifconfig.me) shows the
-  remote location's public IP. On the "Home" network, it shows your own.
-- Stop the tunnel with `ifdown wgvpn`. Devices on the "Frankfurt" network should lose internet
-  access, while the "Home" network keeps working.
+- On a device connected to the "Frankfurt" network, [ifconfig.me](https://ifconfig.me) shows the public IP of the
+  remote location. On the "Home" network, it shows my own.
+- After stopping the tunnel with `ifdown wgvpn`, devices on the "Frankfurt" network lose internet access, while the
+  "Home" network keeps working.
 
 ## More than one location
 
-The pattern scales: add VLAN 3, a second tunnel `wgvpn2`, routing table 1702 and a third SSID, and
-the house has Wi-Fi networks in two other countries.
+The pattern scales: VLAN 3, a second tunnel `wgvpn2`, routing table 1702 and a third SSID give the house a Wi-Fi
+network in yet another country.
 
 ## Limitations
 
-- **Bandwidth and latency.** Throughput is limited by the remote location's upload speed and by how
-  fast the router can encrypt WireGuard traffic. Every packet also travels to the remote location
-  and back. Between Sydney and Europe, that adds roughly 250–300 ms of round-trip time.
-- **IP address isn't the only location signal.** Phones also use GPS and the Wi-Fi networks they
-  can see to determine their location, and some apps check those instead of the IP address.
-- **Terms of service.** Some streaming services prohibit accessing content from outside its
-  licensed region. Check the terms of the services you use.
+- **Bandwidth and latency.** The throughput is limited by the upload speed at the remote location and by how fast the
+  router can encrypt WireGuard traffic. Every packet also travels to the remote location and back. Between Sydney and
+  Europe, that adds roughly 250-300 ms of round-trip time.
+- **The IP address is not the only location signal.** Phones also use GPS and the Wi-Fi networks they can see to
+  determine their location, and some apps check those instead of the IP address.
+- **Terms of service.** Some streaming services prohibit accessing content from outside their licensed region. Check
+  the terms of the services you use.
