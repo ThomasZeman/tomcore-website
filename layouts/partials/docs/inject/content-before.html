@@ -1,0 +1,46 @@
+{{- /*
+  "Written with AI assistance" badge.
+  Enable per page with `aiAssisted: true` in the front matter. The optional `aiAssistedNote`
+  replaces the default explanation shown as a tooltip and in the expandable text.
+*/ -}}
+{{- if .Params.aiAssisted }}
+{{- $note := default "The setup, the measurements and the conclusions in this article are my own. An AI assistant helped me with research, drafting and editing the text." .Params.aiAssistedNote }}
+<style>
+  .ai-badge {
+    display: inline-block;
+    margin: 0 0 1rem 0;
+    font-size: 0.75rem;
+    line-height: 1.4;
+  }
+  .ai-badge summary {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35em;
+    padding: 0.15em 0.7em;
+    border: 1px solid var(--gray-500);
+    border-radius: 999px;
+    color: var(--body-font-color);
+    background: var(--gray-100);
+    cursor: pointer;
+    list-style: none;
+    user-select: none;
+  }
+  .ai-badge summary::-webkit-details-marker { display: none; }
+  .ai-badge summary::before { content: "✦"; color: var(--color-link); }
+  .ai-badge[open] summary { border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
+  .ai-badge p {
+    margin: 0;
+    padding: 0.5em 0.8em;
+    max-width: 36em;
+    border: 1px solid var(--gray-500);
+    border-top: none;
+    border-radius: 0 0.5em 0.5em 0.5em;
+    background: var(--gray-100);
+    color: var(--body-font-color);
+  }
+</style>
+<details class="ai-badge" title="{{ $note }}">
+  <summary>Written with AI assistance</summary>
+  <p>{{ $note }}</p>
+</details>
+{{- end }}

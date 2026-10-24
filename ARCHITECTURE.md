@@ -85,7 +85,10 @@ at compile time), `BookToC`, `BookTheme: auto` (follows OS light/dark), `BookCom
 `enableGitInfo` (last-modified dates from git history), and `BookRepo`/`BookEditPath`
 for "Edit this page" links back to GitHub.
 
-`layouts/partials/docs/inject/content-after.html` is the one custom layout. It appends a
+Two custom layouts live in `layouts/partials/docs/inject/`. `content-before.html` renders a
+"Written with AI assistance" badge above the content of every page whose front matter sets
+`aiAssisted: true` (an optional `aiAssistedNote` replaces the default explanation).
+`content-after.html` appends a
 Ko-fi support blurb and a CC BY-SA license notice to every page whose content does not
 match `Welcome to TomCore`, and conditionally pulls in `clipboard.js`/`clipboard.css`
 only on pages that contain a `<pre>` block (copy-to-clipboard buttons for code samples).
