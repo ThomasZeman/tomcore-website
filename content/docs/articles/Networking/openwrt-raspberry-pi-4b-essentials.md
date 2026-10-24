@@ -1,14 +1,14 @@
 ---
 weight: 5
 title: "OpenWrt on a Raspberry PI 4B: Essentials"
-draft: true
+aiAssisted: true
 ---
 # OpenWrt on a Raspberry PI 4B: Essentials
 
 {{% hint info %}}
 **Work in progress, October 2026.** Built on OpenWrt 25.12.5 with kernel 6.12.94. This is the first part of a series
-and describes what is running today. Later parts will cover the WireGuard server, the VLAN that exits in another
-country and the first Docker containers.
+and describes what is running today. The other parts, coming soon, cover Docker, the WireGuard server and the VLAN
+that exits in another country.
 {{% /hint %}}
 
 For a few years my Raspberry PI ran Alpine Linux as a home router. I configured the network interfaces, nftables and
@@ -21,9 +21,10 @@ come out of the box, together with a web interface (LuCI). What OpenWrt does not
 with a web interface, will run in Docker on the same box. I did not want to run a second device with another power
 adapter for that.
 
-This article describes the foundation: the hardware, the installation, the quirks of the USB network adapter, moving
-the system from the SD card to an SSD, and installing Docker in a way that a runaway container cannot take the router
-down with it.
+This article describes the foundation: the hardware, the installation including the first security steps, how IPv6
+works on this router, the quirks of the USB network adapter, and moving the system from the SD card to an SSD. Docker comes up wherever it influenced
+these decisions, but the installation itself, including how I keep a runaway container from taking the router down,
+is described in a separate article about Docker (coming soon).
 
 ## Hardware
 
@@ -32,7 +33,7 @@ down with it.
 | Board | Raspberry PI 4 Model B Rev 1.4, 8GB RAM |
 | LAN | The built-in Gigabit Ethernet port (`eth0`) |
 | WAN | A USB 3.0 2.5G Ethernet adapter based on the Realtek RTL8156 chip (`eth1`) |
-| Storage | A Samsung 840 EVO 250GB SATA SSD in a USB 3.0 enclosure with an ASMedia ASM1051 bridge chip |
+| Storage | A Samsung 840 EVO 250GB SATA SSD in a USB 3.0 enclosure with an ASMedia bridge chip (USB ID `174c:55aa`) |
 | SD Card | Only needed for the first installation, not anymore |
 
 In my [USB network performance](/docs/articles/RaspberryPI/raspberry-pi-4b-usb-network-performance/)
@@ -43,14 +44,14 @@ traffic now compete for that one interrupt.
 
 {{< mermaid >}}
 flowchart LR
-    inet(("Internet")) --- up["NBN HFC modem<br/>(coax)"]
-    up ---|"eth1 - USB 2.5G"| pi
-    subgraph pi["Raspberry PI 4B - OpenWrt"]
-        r["Routing, firewall,<br/>DHCP, DNS"]
-        d["Docker"]
-    end
-    ssd[("USB SSD<br/>boot, root, /opt")] --- pi
-    pi ---|"eth0 - built-in<br/>10.0.0.1/24"| lan["LAN"]
+  inet(("Internet")) --- up["NBN HFC modem<br/>(coax)"]
+  up ---|"eth1 - USB 2.5G"| pi
+  subgraph pi["Raspberry PI 4B - OpenWrt"]
+    r["Routing, firewall,<br/>DHCP, DNS"]
+    d["Docker<br/>(separate article)"]
+  end
+  ssd[("USB SSD<br/>boot, root, /opt")] --- pi
+  pi ---|"eth0 - built-in<br/>10.0.0.1/24"| lan["LAN"]
 {{< /mermaid >}}
 
 On the WAN side, the PI connects to an Australian NBN HFC (coax) modem. The modem does not route by itself, it only
@@ -60,21 +61,97 @@ latter)
 
 ## Installing OpenWrt
 
-There is a chicken-and-egg problem with a USB WAN port: a stock OpenWrt image does not include the driver for the
-Realtek adapter, and without the driver, the PI cannot get online to install it. The way out is to build an image
-which already contains the driver. The [OpenWrt Firmware Selector](https://firmware-selector.openwrt.org/) does that
-online: select "Raspberry Pi 4B/400/CM4 (64bit)", open "Customize installed packages" and add at least:
+### Building and writing the image
+
+The stock image for the Raspberry PI 4 already contains `kmod-usb-net-rtl8152`, the driver for the whole RTL815x
+family including the RTL8156, so the USB adapter works as a WAN port right away. What the image does not contain is
+the firmware for the chip and the tools to switch the adapter out of its CD-ROM mode, a problem described further
+down. Keep in mind that a WAN port which does not come up means no internet to install anything with, so these
+packages belong into the image. The [OpenWrt Firmware Selector](https://firmware-selector.openwrt.org/) builds one
+online: select "Raspberry Pi 4B/400/CM4 (64bit)", open "Customize installed packages" and add:
 
 ```text
-kmod-usb-net-rtl8152 r8152-firmware usb-modeswitch usbutils
+r8152-firmware usb-modeswitch usbutils
 ```
 
-(Note: `kmod-usb-net-rtl8152` is the driver for the whole RTL815x family, including the RTL8156)
+(Note: if your adapter is not a Realtek, check the [Table of Hardware](https://openwrt.org/toh/start) for its driver
+package and add that one as well)
 
 I picked the ext4 image instead of squashfs because I knew I was going to install many packages later. I wrote it to
 the SD Card with Raspberry PI Imager ("Use custom"). OpenWrt boots with the LAN address `192.168.1.1` and a root
-account without password, so connect a PC directly to the built-in port, open `http://192.168.1.1` and set a root
-password first (System → Administration).
+account without password, so connect a PC directly to the built-in port and open `http://192.168.1.1`.
+
+### Password and SSH access first
+
+A fresh OpenWrt has no root password at all. The web interface and SSH simply let everybody in, and that is not a
+theoretical problem: everything in the LAN can reach the router, and once Docker runs on the box, so can every
+container. I am a little embarrassed to say that I only noticed this after the system had been running for a while,
+because I had restored a backup and never checked. So this is the first thing to do, before the network
+configuration, and it has to be checked again after every restore from a backup.
+
+(Note: the examples below already use `10.0.0.1`, the LAN address I configure in the next step. On a fresh image,
+the router is still at `192.168.1.1`)
+
+**1. Set the root password** under System → Administration → Router Password. The same password protects LuCI and
+SSH. The usual rules apply: long, unique to this device and stored in a password manager. Nobody has to type it
+often, as the next step shows.
+
+**2. Log in with a key instead of the password.** A key cannot be guessed or phished, and the password then only
+serves as a fallback on the console. I already had an [Ed25519](https://en.wikipedia.org/wiki/EdDSA#Ed25519) key
+pair on my Windows PC. If you do not, `ssh-keygen -t ed25519` creates one in `%USERPROFILE%\.ssh\`, and the public
+half is in `id_ed25519.pub`. Please note, only the `.pub` file ever leaves your PC. The content of that file goes
+into System → Administration → SSH-Keys, which stores it in `/etc/dropbear/authorized_keys`:
+
+```shell
+root@OpenWrt:~# cat /etc/dropbear/authorized_keys
+ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAA... thomas@pc
+```
+
+Then test it from a **second** terminal, while the first one stays logged in. If the key does not work, the first
+terminal is the way back to fix it:
+
+```shell
+PS C:\> ssh -o PasswordAuthentication=no root@10.0.0.1
+root@OpenWrt:~#
+```
+
+**3. Turn password logins off** once the key works. OpenWrt's SSH server is [Dropbear](https://matt.ucc.asn.au/dropbear/dropbear.html),
+and it is configured in uci. At the same time, I bind it to the LAN interface only. The firewall already keeps SSH
+away from the WAN, but this way Dropbear never listens on a VLAN or a WireGuard interface which I add later, unless
+I decide that it should:
+
+```shell
+root@OpenWrt:~# uci set dropbear.main.PasswordAuth='off'
+root@OpenWrt:~# uci set dropbear.main.RootPasswordAuth='off'
+root@OpenWrt:~# uci set dropbear.main.Interface='lan'
+root@OpenWrt:~# uci commit dropbear
+root@OpenWrt:~# /etc/init.d/dropbear restart
+root@OpenWrt:~# uci show dropbear
+dropbear.main=dropbear
+dropbear.main.enable='1'
+dropbear.main.PasswordAuth='off'
+dropbear.main.RootPasswordAuth='off'
+dropbear.main.Port='22'
+dropbear.main.Interface='lan'
+```
+
+A login attempt without the key is now refused before any password is asked for, and the key still works:
+
+```shell
+PS C:\> ssh -o PubkeyAuthentication=no root@10.0.0.1
+root@10.0.0.1: Permission denied (publickey).
+PS C:\> ssh root@10.0.0.1
+root@OpenWrt:~#
+```
+
+`/etc/dropbear/` is on OpenWrt's built-in keep list (`/lib/upgrade/keep.d/dropbear`), so the key and the host keys
+survive upgrades without an entry in `sysupgrade.conf`, and they are part of the backup archive.
+
+(Note: this protects the router against everybody in the LAN. Keeping the internet out is the job of the firewall,
+as described in the IPv6 section. What is still open is a Docker container reaching the web interface, which I
+take care of in the Docker article, coming soon)
+
+### LAN and WAN
 
 My network configuration is small. The LAN moved to `10.0.0.1/24` (the same subnet as in my old Alpine setup) and
 the WAN is the USB adapter, configured via DHCP:
@@ -97,9 +174,200 @@ network.wan.proto='dhcp'
 network.wan6=interface
 network.wan6.device='eth1'
 network.wan6.proto='dhcpv6'
+network.wan6.reqaddress='try'
+network.wan6.reqprefix='auto'
 ```
 
-## The USB adapter is missing in the Port status
+## IPv6
+
+My provider delivers [IPv6](https://en.wikipedia.org/wiki/IPv6) natively on the HFC connection, so the router runs
+dual stack: every device in the LAN gets an address from `10.0.0.0/24` and a public IPv6 address at the same time.
+OpenWrt sets this up out of the box with the `wan6` interface and the `ip6assign` option shown above, and I did not
+have to change anything for it to work. However, IPv6 works quite differently from IPv4 behind the scenes, and I
+wanted to understand what the defaults do before I touch the firewall or add VLANs in the later parts.
+
+(Note: throughout this article, I replaced my real prefix with the
+[documentation prefix](https://en.wikipedia.org/wiki/IPv6_address#Documentation) `2001:db8::/32` and made up the
+rest of the global addresses, the ULA prefix and the provider's link-local address. The structure of the output is unchanged)
+
+### What the provider hands out
+
+With IPv4, the router receives one public address and shares it with the whole LAN through
+[NAT](https://en.wikipedia.org/wiki/Network_address_translation). With IPv6 there is no NAT. Instead, the router asks
+the provider via [DHCPv6](https://en.wikipedia.org/wiki/DHCPv6) for two things: an address for itself
+(`reqaddress='try'`, because some providers do not hand one out) and a whole prefix for the networks behind it
+(`reqprefix='auto'`). The latter is called prefix delegation. This is what came back:
+
+```shell
+root@OpenWrt:~# ifstatus wan6
+{
+  "up": true,
+  ...
+  "proto": "dhcpv6",
+  "delegation": true,
+  "ipv6-address": [
+    {
+      "address": "2001:db8:abcd:1:9f3e:2c1a:7b5d:4e6f",
+      "mask": 128,
+      "preferred": 3163,
+      "valid": 6764
+    }
+  ],
+  "ipv6-prefix": [
+    {
+      "address": "2001:db8:1234::",
+      "mask": 48,
+      "preferred": 3163,
+      "valid": 6764,
+      "class": "wan6",
+      "assigned": {
+        "lan": {
+          "address": "2001:db8:1234::",
+          "mask": 64
+        }
+      }
+    }
+  ],
+  ...
+```
+
+The router got a single address (a /128) for the WAN side and a /48 prefix for the LAN side. A /48 contains 65,536
+networks of /64 each, which is far more than I will ever need, but it means every VLAN I add later can get its own
+/64 without asking the provider for anything. `ip6assign='64'` on the `lan` interface tells OpenWrt to take one /64
+out of the delegated prefix and assign it to the LAN bridge. The router itself takes the `::1` address of it:
+
+```shell
+root@OpenWrt:~# ip -6 addr show br-lan
+5: br-lan: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP group default qlen 1000
+    inet6 2001:db8:1234::1/64 scope global dynamic noprefixroute
+       valid_lft 6764sec preferred_lft 3163sec
+    inet6 fd12:3456:789a::1/64 scope global noprefixroute
+       valid_lft forever preferred_lft forever
+    inet6 fe80::.../64 scope link proto kernel_ll
+       valid_lft forever preferred_lft forever
+```
+
+The LAN bridge has three IPv6 addresses, and every device in the LAN will end up with the same three kinds:
+
+- **The global address** from the provider's prefix. It is marked `dynamic` with a lifetime of 6764 seconds, less
+  than two hours, and is renewed over and over as long as the connection is up. The provider can hand out a different
+  prefix after a reconnect, so I do not write global IPv6 addresses into any configuration or firewall rule. OpenWrt
+  derives them from the prefix at runtime.
+- **A [Unique Local Address](https://en.wikipedia.org/wiki/Unique_local_address) (ULA)** from `fd12:3456:789a::/48`.
+  This is the IPv6 counterpart of a private IPv4 range. OpenWrt generated the prefix randomly at the first boot
+  (`network.globals.ula_prefix`) and it never changes, so devices in the LAN can always reach each other and the
+  router under a stable address, even when the provider's prefix changes or the WAN is down.
+- **The link-local address** `fe80::...`, which every IPv6 interface has, and which is used for everything that
+  happens between neighbors on the same cable: discovering the router, resolving addresses and the default route.
+
+### How the devices in the LAN get their addresses
+
+With IPv4, the DHCP server hands out the address, the gateway and the DNS server in one go. IPv6 splits this up.
+The router (the `odhcpd` daemon, configured in `dhcp.lan`) periodically sends Router Advertisements, which tell the
+devices the prefix of the LAN and that the router is the way out:
+
+```shell
+root@OpenWrt:~# uci show dhcp.lan
+dhcp.lan=dhcp
+dhcp.lan.interface='lan'
+...
+dhcp.lan.dhcpv6='server'
+dhcp.lan.ra='server'
+dhcp.lan.ra_slaac='1'
+dhcp.lan.ra_flags='managed-config' 'other-config'
+dhcp.lan.ra_default='1'
+```
+
+With `ra_slaac='1'`, devices build their own address out of the advertised /64 and an interface part they choose
+themselves ([SLAAC](https://en.wikipedia.org/wiki/IPv6#Stateless_address_autoconfiguration_(SLAAC)), stateless
+address autoconfiguration). Most devices also generate a new random address every day for privacy. At the same time,
+the router runs a DHCPv6 server, and the two `ra_flags` announce it: `managed-config` says that addresses are
+available via DHCPv6, and `other-config` that other information, such as DNS servers, is as well. Both are needed,
+because the devices do not agree on one method: Windows happily uses DHCPv6, while Android does not support DHCPv6
+at all and relies on SLAAC and the DNS servers announced in the Router Advertisement. The result is that every
+device gets an address, but a device may well have several global addresses at once. Please note, for that reason,
+a list of leases like the one for IPv4 does not exist for IPv6, which matters for firewall rules per device later on.
+
+The gateway is also not part of DHCP. The default route of each device points to the link-local address of the
+router, learned from the Router Advertisement, and the router's own default route works the same way towards the
+provider:
+
+```shell
+root@OpenWrt:~# ip -6 route show default
+default from 2001:db8:1234::/48 via fe80::1234:56ff:fe78:9abc dev eth1 proto static metric 384 pref medium
+default from 2001:db8:abcd:1:9f3e:2c1a:7b5d:4e6f via fe80::1234:56ff:fe78:9abc dev eth1 proto static metric 384 pref medium
+```
+
+Noticeably, both default routes have a `from` part. They only apply to packets whose source address is in the
+delegated prefix or is the WAN address. A packet with a ULA source address matches neither and has no route to the
+internet, which is exactly right, since nobody out there could answer it.
+
+### No NAT, so the firewall does all the work
+
+This is the part that deserves the most attention. With IPv4, NAT accidentally acts as a firewall: nobody on the
+internet can address a device behind the router, because the device has no public address. With IPv6, every device
+has one and is reachable in principle. The only thing between a smart TV in the LAN and the internet is the
+firewall. OpenWrt's defaults for the `wan` zone are:
+
+```shell
+root@OpenWrt:~# uci show firewall | grep "@zone\[1\]"
+firewall.@zone[1]=zone
+firewall.@zone[1].name='wan'
+firewall.@zone[1].network='wan' 'wan6'
+firewall.@zone[1].input='REJECT'
+firewall.@zone[1].output='ACCEPT'
+firewall.@zone[1].forward='DROP'
+firewall.@zone[1].masq='1'
+firewall.@zone[1].mtu_fix='1'
+```
+
+Both `wan` and `wan6` are in the same zone, so the rules apply to both protocols. Nothing from the internet gets into
+the router (`input='REJECT'`) or through it to the LAN (`forward='DROP'`), while replies to connections opened from
+the inside are tracked and let back in. That is the same protection a NAT router gives for IPv4. Keep in mind that
+`masq='1'` only applies to IPv4 in OpenWrt. IPv6 is routed with the real addresses.
+
+A few things must get through from the WAN side, though, and OpenWrt ships rules for them which are easy to break
+by well-meaning hardening:
+
+| Rule | What it allows |
+|---|---|
+| `Allow-DHCPv6` | UDP port 546 from the WAN to the router, the replies for the router's own address and prefix |
+| `Allow-MLD` | Multicast Listener Discovery from link-local addresses, needed for multicast on the WAN link |
+| `Allow-ICMPv6-Input` | ICMPv6 to the router itself: ping, error messages, neighbor and router discovery |
+| `Allow-ICMPv6-Forward` | ICMPv6 through the router to the LAN: ping and error messages such as `packet-too-big` |
+
+Blocking ping is a common habit from IPv4, and with IPv6 it is a mistake. ICMPv6 is not only ping. Neighbor
+Discovery, the replacement for ARP, is ICMPv6, and so is [Path MTU Discovery](https://en.wikipedia.org/wiki/Path_MTU_Discovery):
+IPv6 routers never fragment packets, so when a packet is too big for a link on the way, the router there sends a
+`packet-too-big` message back and the sender has to try a smaller size. If that message is dropped by the firewall,
+large downloads and some web pages simply hang while small ones work. It is worth mentioning that
+`Allow-ICMPv6-Forward` includes `echo-request`, so every device in the LAN answers to pings from the internet, rate
+limited to 1000 per second. That reveals that a device exists, nothing more, and I left these defaults as they are.
+
+### Checking that it works
+
+A ping from the router to a host that has an IPv6 address shows that the whole chain works:
+
+```shell
+root@OpenWrt:~# ping -6 -c 3 openwrt.org
+...
+--- openwrt.org ping statistics ---
+3 packets transmitted, 3 packets received, 0% packet loss
+round-trip min/avg/max = 301.796/304.526/308.295 ms
+```
+
+(Note: the 300ms are the distance from Sydney to a server in Europe and have nothing to do with IPv6)
+
+The provider's DNS servers for IPv6 arrive via DHCPv6 as well (`dns-server` in `ifstatus wan6`) and the router hands
+them on to the LAN. For the later parts, two consequences of this setup are worth keeping in mind: every new VLAN
+gets its own /64 from the delegated prefix by setting `ip6assign='64'` on its interface, and the firewall rules of
+that VLAN must cover IPv6 explicitly, because there is no NAT to hide behind.
+
+## Quirks of the USB adapter
+
+The adapter works as a WAN port out of the box, but two things about it needed attention.
+
+### Missing in the Port status
 
 Everything worked, but the overview page of the web interface showed only one port, `eth0`, in its "Port status"
 box. The WAN port was not there, even though it was up and passing traffic.
@@ -111,12 +379,12 @@ in `/etc/board.json`:
 ```shell
 root@OpenWrt:~# ubus call luci getBuiltinEthernetPorts
 {
-        "result": [
-                {
-                        "role": "lan",
-                        "device": "eth0"
-                }
-        ]
+  "result": [
+    {
+      "role": "lan",
+      "device": "eth0"
+    }
+  ]
 }
 ```
 
@@ -170,7 +438,7 @@ A firmware upgrade only keeps files listed in `/etc/sysupgrade.conf`, so the scr
 root@OpenWrt:~# echo "/etc/board.d/03_usb_wan" >> /etc/sysupgrade.conf
 ```
 
-## The USB adapter boots as a CD-ROM
+### Booting as a CD-ROM
 
 Many Realtek USB network adapters contain a small flash chip with a Windows driver. When plugged in, they first
 pretend to be a USB CD-ROM drive (USB ID `0bda:8151`) so that Windows can install the driver from it. Only after
@@ -194,18 +462,18 @@ What worked was Realtek's own vendor switch message, which I put into a separate
 ```shell
 root@OpenWrt:~# cat /etc/usb-mode-rtl8156.json
 {
-	"messages": [
-		"555342430860d9a9c0000000800006e0000000000000000000000000000000"
-	],
-	"devices": {
-		"0bda:8151": {
-			"*": {
-				"t_vendor": 3034,
-				"t_product": [ 33110 ],
-				"msg": [ 0 ]
-			}
-		}
-	}
+  "messages": [
+    "555342430860d9a9c0000000800006e0000000000000000000000000000000"
+  ],
+  "devices": {
+    "0bda:8151": {
+      "*": {
+        "t_vendor": 3034,
+        "t_product": [ 33110 ],
+        "msg": [ 0 ]
+      }
+    }
+  }
 }
 root@OpenWrt:~# usbmode -s -v -c /etc/usb-mode-rtl8156.json
 root@OpenWrt:~# dmesg | tail -3
@@ -228,9 +496,9 @@ root@OpenWrt:~# cat /etc/hotplug.d/usb/21-rtl8156-modeswitch
 
 case "$PRODUCT" in
 bda/8151/*)
-	logger -t rtl8156-modeswitch "switching $DEVPATH from CD-ROM to NIC mode"
-	usbmode -s -c /etc/usb-mode-rtl8156.json
-	;;
+  logger -t rtl8156-modeswitch "switching $DEVPATH from CD-ROM to NIC mode"
+  usbmode -s -c /etc/usb-mode-rtl8156.json
+  ;;
 esac
 ```
 
@@ -275,8 +543,8 @@ on the disk. If the layout is unchanged, it writes the partitions one at a time.
 full image over the whole disk, including the partition table:
 
 ```shell
-	if [ -n "$diff" ]; then
-		get_image "$@" | dd of="/dev/$diskdev" bs=2M conv=fsync
+  if [ -n "$diff" ]; then
+    get_image "$@" | dd of="/dev/$diskdev" bs=2M conv=fsync
 ```
 
 Changing the root size from 104MB to 1GB is such a change. Before running it, I saved a backup of the settings
@@ -317,12 +585,15 @@ ID# ATTRIBUTE_NAME          FLAG     VALUE WORST THRESH TYPE      UPDATED  WHEN_
 ```
 
 More than 15,000 hours of power-on time, but no reallocated sectors and almost no wear. A sequential read of 2GiB took
-8 seconds, about 268MB/s, which is normal for a SATA SSD behind a USB 3.0 bridge. The ASM1051 uses the faster UAS
-driver. It is worth mentioning that this bridge chip does not pass TRIM commands through
+8 seconds, about 268MB/s, which is normal for a SATA SSD behind a USB 3.0 bridge. The bridge uses the faster UAS
+driver. It is worth mentioning that it does not pass TRIM commands through
 (`/sys/block/sda/queue/discard_max_bytes` is 0) and reports the SSD as a spinning disk. With this much free space,
-I can live with that. The ASM1051 also has a history of UAS problems on the PI 4. So far I have not seen any
-`uas_eh_abort_handler` errors, but if the disk ever drops off under load, switching it to the older usb-storage
-driver is the known fix.
+I can live with that. ASMedia bridges with the USB ID `174c:55aa` also have a history of UAS problems on the PI 4.
+So far I have not seen any `uas_eh_abort_handler` errors, but if the disk ever drops off under load, switching it
+to the older usb-storage driver is the known fix.
+
+(Note: `lsusb` lists this ID as ASM1051E, ASM1053E or ASM1153, and the enclosure identifies itself as "ASMT 2115",
+so I cannot say which chip it is exactly)
 
 ### Building a factory image for the SSD
 
@@ -368,19 +639,20 @@ root@OpenWrt:~# grep -o "root=[^ ]*" /boot/cmdline.txt
 root=PARTUUID=e875e867-02
 ```
 
-### Adding the Docker partition
+### Adding a data partition
 
 The SSD has 250GB, and the image uses about 1.1GB of it. I left a gap of about 3GB after the root partition in case
-I need to grow it later, and gave the rest to Docker:
+I need to grow it later, and gave the rest to a data partition mounted at `/opt`. This is where Docker will keep its
+images and containers, as described in the Docker article (coming soon):
 
 {{< mermaid >}}
 flowchart LR
-    subgraph SSD 250GB
-        id1(Boot Partition - FAT - 64MB)
-        id2(Root Partition - EXT4 - 1GB)
-        id3(Free - ~3GB)
-        id4(Docker Partition - EXT4 - ~229GB - /opt)
-    end
+  subgraph SSD 250GB
+    id1(Boot Partition - FAT - 64MB)
+    id2(Root Partition - EXT4 - 1GB)
+    id3(Free - ~3GB)
+    id4(Data Partition - EXT4 - ~229GB - /opt)
+  end
 {{< /mermaid >}}
 
 ```shell
@@ -396,8 +668,8 @@ root@OpenWrt:~# uci commit fstab
 root@OpenWrt:~# /etc/init.d/fstab enable
 ```
 
-`/opt` is mounted by `fstab` (S11) long before `dockerd` starts (S99), and OpenWrt's Docker package already stores
-its data in `/opt/docker/` (`data_root` in `/etc/config/dockerd`).
+`/opt` is mounted by `fstab` (S11) early during boot, long before any service that stores data there. I chose `/opt`
+because OpenWrt's Docker package already uses `/opt/docker/` as its default data directory.
 
 Then I rebooted, and the PI did not come back. The screen showed:
 
@@ -441,167 +713,9 @@ root@OpenWrt:~# owut upgrade -S 1024
 ```
 
 With an unchanged layout, the script writes the boot and root partitions one at a time and leaves the partition
-table, and with it the Docker partition, alone. A different size would overwrite the whole disk. I have not run an
+table, and with it the data partition, alone. A different size would overwrite the whole disk. I have not run an
 upgrade on the SSD yet, so this is what the script says rather than something I have seen myself. Before the first
 one, I will take a fresh backup.
-
-## Docker
-
-With the packages in the image and the data on the SSD, Docker was running after the first boot:
-
-```shell
-root@OpenWrt:~# docker info | grep -E "Server Version|Storage Driver|Cgroup|Docker Root Dir|WARNING"
- Server Version: 29.6.1
- Storage Driver: overlayfs
- Cgroup Driver: cgroupfs
- Cgroup Version: 2
- Docker Root Dir: /opt/docker/
-WARNING: No memory limit support
-WARNING: No swap limit support
-```
-
-The two warnings at the end are the topic of the next section.
-
-The first `docker run --rm hello-world` failed with
-`adding interface veth28c0f5d to bridge docker0 failed: Device does not exist`. On its very first start, the
-`dockerd` init script adds a `docker` interface and firewall zone to the OpenWrt configuration and reloads the
-network, and that reload removed the `docker0` bridge Docker had just created. A restart of `dockerd` fixed it, and
-it has not come back on any of the following boots.
-
-### Docker and the OpenWrt firewall
-
-The Docker package comes with this note in `/etc/config/dockerd`:
-
-```text
-# Docker doesn't work well out of the box with fw4. This is because Docker relies on a compatibility layer that
-# naively translates iptables rules.
-```
-
-By default, it blocks all traffic from the WAN to `docker0`. That sounds right, but it includes the replies to
-connections the containers open themselves, so the containers had no internet access at all. Two changes fixed that:
-a forwarding from the `docker` zone to `wan`, and an exception for replies in Docker's WAN block (the option is
-already in the file, commented out with the remark "allow outbound connections"):
-
-```shell
-root@OpenWrt:~# S=$(uci add firewall forwarding)
-root@OpenWrt:~# uci set firewall.$S.src='docker'
-root@OpenWrt:~# uci set firewall.$S.dest='wan'
-root@OpenWrt:~# uci commit firewall
-root@OpenWrt:~# uci set dockerd.firewall.extra_iptables_args='--match conntrack ! --ctstate RELATED,ESTABLISHED'
-root@OpenWrt:~# uci commit dockerd
-```
-
-New connections from the WAN to the containers are still rejected, and the containers cannot reach the LAN. Please
-note, as the comment in the config says, the firewall changes are only additive: the old rule stays loaded until the
-firewall and then Docker are restarted. A reboot is the simplest way.
-
-### Keeping Docker from starving the router
-
-A router running Docker must never run out of memory for routing just because a container misbehaves. On the PI,
-nothing prevented that: the PI firmware adds `cgroup_disable=memory` to every kernel command line, so the kernel's
-memory controller is switched off, and Docker cannot limit memory, neither per container nor in total:
-
-```shell
-root@OpenWrt:~# cat /sys/fs/cgroup/cgroup.controllers
-cpuset cpu io pids rdma
-```
-
-Appending `cgroup_enable=memory` to `/boot/cmdline.txt` overrides that. It is a boot file, so I made a backup copy
-first and checked that the `root=PARTUUID=e875e867-02` part was unchanged:
-
-```shell
-root@OpenWrt:~# cp /boot/cmdline.txt /boot/cmdline.txt.bak
-root@OpenWrt:~# sed -i "1s/\$/ cgroup_enable=memory/" /boot/cmdline.txt
-root@OpenWrt:~# cat /boot/cmdline.txt
-console=tty1 console=serial0,115200 root=PARTUUID=e875e867-02 rootfstype=squashfs,ext4 rootwait cgroup_enable=memory
-```
-
-Docker creates every container's cgroup under `/sys/fs/cgroup/docker`. Instead of setting limits on each container,
-a small init script caps that group as a whole, before `dockerd` starts:
-
-```shell
-root@OpenWrt:~# cat /etc/init.d/docker-memcap
-#!/bin/sh /etc/rc.common
-# Cap the memory of all Docker containers combined so a runaway container
-# can never starve routing. Runs before dockerd (S99), which then creates
-# every container cgroup under /sys/fs/cgroup/docker.
-
-START=98
-
-CG=/sys/fs/cgroup
-DOCKER_CG=$CG/docker
-MEM_HIGH=5632M
-MEM_MAX=6G
-SWAP_MAX=2G
-
-start() {
-	if ! grep -qw memory $CG/cgroup.controllers; then
-		logger -t docker-memcap -p err "memory controller unavailable, Docker is NOT capped (check cgroup_enable=memory in /boot/cmdline.txt)"
-		return 1
-	fi
-
-	grep -qw memory $CG/cgroup.subtree_control || echo +memory > $CG/cgroup.subtree_control
-	mkdir -p $DOCKER_CG
-	echo $MEM_HIGH > $DOCKER_CG/memory.high
-	echo $MEM_MAX > $DOCKER_CG/memory.max
-	[ -f $DOCKER_CG/memory.swap.max ] && echo $SWAP_MAX > $DOCKER_CG/memory.swap.max
-
-	logger -t docker-memcap "docker cgroup capped: high=$(cat $DOCKER_CG/memory.high) max=$(cat $DOCKER_CG/memory.max) swap.max=$(cat $DOCKER_CG/memory.swap.max 2>/dev/null || echo n/a)"
-}
-root@OpenWrt:~# chmod +x /etc/init.d/docker-memcap
-root@OpenWrt:~# /etc/init.d/docker-memcap enable
-```
-
-- `memory.max = 6G`: all containers together can never use more than this. That leaves 2GB for the router itself,
-  which currently uses about 140MB.
-- `memory.high = 5.5G`: containers are slowed down before they reach the hard limit.
-- `memory.swap.max = 2G`: Docker may push at most 2GB into swap.
-
-As a safety net, I also added an 8GB swap file on `/opt`. I chose a file over a swap partition on purpose: a new
-partition means another change to the partition table, and we have seen above what that can do to the disk ID.
-Setting `vm.swappiness` to 10 means the kernel only swaps when memory is actually short:
-
-```shell
-root@OpenWrt:~# dd if=/dev/zero of=/opt/swapfile bs=4M count=2048 conv=fsync
-root@OpenWrt:~# chmod 600 /opt/swapfile
-root@OpenWrt:~# mkswap /opt/swapfile
-root@OpenWrt:~# S=$(uci add fstab swap)
-root@OpenWrt:~# uci set fstab.$S.device='/opt/swapfile'
-root@OpenWrt:~# uci set fstab.$S.enabled='1'
-root@OpenWrt:~# uci commit fstab
-root@OpenWrt:~# echo "vm.swappiness=10" >> /etc/sysctl.conf
-```
-
-Swap alone would not protect routing. Without the cap, a runaway container would push the whole system into swap and
-routing would slow to a crawl. The cap is the real protection.
-
-#### Test
-
-To test the cap, I ran a container with `stress-ng` that tries to allocate 9GB, while my PC pinged the router and
-I checked SSH and the internet connection from the router:
-
-```shell
-root@OpenWrt:~# docker run --rm --name memhog alpine sh -c "apk add -q stress-ng && stress-ng --vm 1 --vm-bytes 9G --vm-keep --timeout 90s"
-```
-
-(Note: my first attempt with `head -c 9G /dev/zero` did nothing, because BusyBox's `head` does not understand the
-`9G` suffix)
-
-| | Result |
-|---|---|
-| Docker RAM | Rose to about 5.7GiB and stayed there, the `memory.high` level |
-| Docker swap | Filled its 2GiB allowance and stopped |
-| Available memory for the router | Never below 1.8GiB |
-| Ping from the PC to the router | 150 sent, 150 received, max 8ms |
-| SSH login | 1.3 seconds |
-| Ping from the router to the internet | About 14ms, as usual |
-
-So the router itself was not affected at all. But the container was not killed either. The kernel throttled it at
-the `memory.high` level 173,815 times, the out-of-memory killer never fired (`oom_kill 0`), and the container, which
-should have finished after 90 seconds, was still frozen after 6 minutes until I stopped it. My interpretation is that
-`memory.high` together with free swap space keeps a runaway container alive in a hung state rather than ending it.
-I am considering removing `memory.high` so that the hard limit applies directly. A container that runs out of memory
-would then be killed straight away, and Docker can restart it with `restart: unless-stopped`.
 
 ## Files to keep across upgrades
 
@@ -616,25 +730,24 @@ root@OpenWrt:~# cat /etc/sysupgrade.conf
 # /etc/example.conf
 # /etc/openvpn/
 /etc/board.d/03_usb_wan
-/etc/init.d/docker-memcap
-/etc/rc.d/S98docker-memcap
 /etc/hotplug.d/usb/21-rtl8156-modeswitch
 /etc/usb-mode-rtl8156.json
 ```
 
-`/boot/cmdline.txt`, `/etc/sysctl.conf` and the uci configuration (network, firewall, fstab and dockerd) are part
-of the backup anyway.
+`/boot/cmdline.txt` and the uci configuration (network, dhcp, firewall and fstab) are part of the backup anyway. The
+Docker article will add its own files to this list.
 
 ## Summary and next steps
 
-The PI now boots from the SSD and routes between the LAN (`10.0.0.1/24`) and the USB WAN port. Docker stores its
-data on a 229GB partition, and a cap makes sure the containers cannot take away the memory the router needs.
+The PI now boots from the SSD and routes between the LAN (`10.0.0.1/24` and a /64 from the provider's IPv6 prefix)
+and the USB WAN port. A 229GB data partition is mounted at `/opt` and waits for Docker.
 
-Open points for the next parts of this series:
+The other parts of this series are coming soon:
 
+- Docker: the installation, the firewall changes and a memory cap which makes
+  sure the containers cannot take away the memory the router needs. The first real container will be a Git server
+  with a web interface (Forgejo).
 - A WireGuard server for remote access into the LAN. This requires a public IPv4 address from the provider and not
   one behind CGNAT.
-- A Git server with a web interface (Forgejo) as the first real Docker container, with its data under `/opt` and
-  its ports only bound to the LAN.
 - The second Wi-Fi network on VLAN 2 whose traffic leaves through a WireGuard tunnel in another country, as
-  described in [A Wi-Fi Network in Another Country](wifi-network-in-another-country).
+  described in the article A Wi-Fi Network in Another Country.
