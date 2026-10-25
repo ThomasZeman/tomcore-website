@@ -45,7 +45,7 @@ const addCopyButtons = (clipboard) => {
         button.type = "button";
         button.innerHTML = "📋";
         button.addEventListener("click", () => {
-            clipboard.writeText(commandsOf(codeBlock.innerText)).then
+            clipboard.writeText(commandsOf(codeBlock.textContent)).then
             (
                 () => {
                     button.innerHTML = "✔️";

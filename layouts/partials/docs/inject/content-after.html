@@ -6,6 +6,8 @@
 This text is available under the <a href="https://creativecommons.org/licenses/by-sa/4.0/legalcode">Creative Commons Attribution-ShareAlike License</a>
 {{ end }}
 {{ if (findRE "<pre" .Content 1) }}
-<script src="/js/clipboard.js"></script>
-<link rel="stylesheet" href="/css/clipboard.css">
+{{ $script := resources.Get "js/clipboard.js" | fingerprint }}
+{{ $style := resources.Get "css/clipboard.css" | fingerprint }}
+<script src="{{ $script.RelPermalink }}" integrity="{{ $script.Data.Integrity }}"></script>
+<link rel="stylesheet" href="{{ $style.RelPermalink }}" integrity="{{ $style.Data.Integrity }}">
 {{ end }}
