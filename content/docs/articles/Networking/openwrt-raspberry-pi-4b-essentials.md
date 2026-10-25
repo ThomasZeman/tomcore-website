@@ -424,7 +424,12 @@ entry:
 
 ```shell
 root@OpenWrt:~# cp /etc/board.json /etc/board.json.bak
-root@OpenWrt:~# ucode -l fs -e 'let f="/etc/board.json"; let b=json(fs.readfile(f)); b.network.wan={device:"eth1",protocol:"dhcp"}; fs.writefile(f, sprintf("%.J\n", b));'
+root@OpenWrt:~# ucode -l fs - <<'EOF'
+let f = "/etc/board.json";
+let b = json(fs.readfile(f));
+b.network.wan = { device: "eth1", protocol: "dhcp" };
+fs.writefile(f, sprintf("%.J\n", b));
+EOF
 root@OpenWrt:~# jsonfilter -i /etc/board.json -e "@.network"
 { "lan": { "device": "eth0", "protocol": "static" }, "wan": { "device": "eth1", "protocol": "dhcp" } }
 ```
@@ -530,7 +535,8 @@ The supported way is to build the upgrade with a larger root partition. OpenWrt'
 custom image from the official build server, and `-S` sets the root partition size in MB:
 
 ```shell
-root@OpenWrt:~# owut upgrade -a "dockerd docker docker-compose luci-app-dockerman" -S 1024
+root@OpenWrt:~# owut upgrade -S 1024 \
+  -a "dockerd docker docker-compose luci-app-dockerman"
 ...
 Build succeeded in 192s total =   0s in queue + 192s to build:
 Image saved : /tmp/firmware.bin
@@ -704,7 +710,8 @@ the PI booted from the SSD with `/opt` mounted. My rule from now on: after any c
 the disk ID before rebooting:
 
 ```shell
-root@OpenWrt:~# dd if=/dev/sda bs=1 skip=440 count=4 2>/dev/null | hexdump -e '1/4 "%08x\n"'
+root@OpenWrt:~# dd if=/dev/sda bs=1 skip=440 count=4 2>/dev/null \
+  | hexdump -e '1/4 "%08x\n"'
 e875e867
 ```
 

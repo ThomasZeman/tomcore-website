@@ -108,7 +108,8 @@ The LAN port of the router carries both networks. Turn on VLAN filtering on the 
 the home LAN and add VLAN 2 tagged:
 
 ```shell
-uci set network.@device[0].vlan_filtering='1'     # the br-lan device; check with: uci show network | grep br-lan
+# the br-lan device; check with: uci show network | grep br-lan
+uci set network.@device[0].vlan_filtering='1'
 uci add network bridge-vlan
 uci set network.@bridge-vlan[-1].device='br-lan'
 uci set network.@bridge-vlan[-1].vlan='1'
@@ -232,7 +233,8 @@ On a Linux machine at the remote location, the WireGuard server needs IP forward
 Address = 10.13.37.1/24
 ListenPort = 51820
 PrivateKey = <SERVER_PRIVATE_KEY>
-PostUp = sysctl -w net.ipv4.ip_forward=1; iptables -t nat -A POSTROUTING -s 10.13.37.0/24 -o eth0 -j MASQUERADE
+PostUp = sysctl -w net.ipv4.ip_forward=1
+PostUp = iptables -t nat -A POSTROUTING -s 10.13.37.0/24 -o eth0 -j MASQUERADE
 PostDown = iptables -t nat -D POSTROUTING -s 10.13.37.0/24 -o eth0 -j MASQUERADE
 
 [Peer]
