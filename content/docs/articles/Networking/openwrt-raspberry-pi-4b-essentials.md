@@ -7,8 +7,9 @@ aiAssisted: true
 
 {{% hint info %}}
 **Work in progress, October 2026.** Built on OpenWrt 25.12.5 with kernel 6.12.94. This is the first part of a series
-and describes what is running today. The other parts, coming soon, cover Docker, the WireGuard server and the VLAN
-that exits in another country.
+and describes what is running today. [Dynamic DNS with AWS Route 53](openwrt-raspberry-pi-4b-ddns-route53) is
+available as well. The other parts, coming soon, cover Docker, the WireGuard server and the VLAN that exits in another
+country.
 {{% /hint %}}
 
 For a few years my Raspberry PI ran Alpine Linux as a home router. I configured the network interfaces, nftables and
@@ -752,6 +753,10 @@ Docker article will add its own files to this list.
 
 The PI now boots from the SSD and routes between the LAN (`10.0.0.1/24` and a /64 from the provider's IPv6 prefix)
 and the USB WAN port. A 229GB data partition is mounted at `/opt` and waits for Docker.
+
+Neither the IPv4 address nor the IPv6 prefix from the provider is guaranteed to stay the same. How the router keeps
+a DNS name pointed at its current addresses is described in
+[Dynamic DNS with AWS Route 53](openwrt-raspberry-pi-4b-ddns-route53).
 
 The other parts of this series are coming soon:
 

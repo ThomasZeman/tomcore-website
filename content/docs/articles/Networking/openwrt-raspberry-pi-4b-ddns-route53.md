@@ -1,15 +1,13 @@
 ---
 weight: 8
 title: "OpenWrt on a Raspberry PI 4B: Dynamic DNS with AWS Route 53"
-draft: true
 aiAssisted: true
 ---
 # OpenWrt on a Raspberry PI 4B: Dynamic DNS with AWS Route 53
 
 {{% hint info %}}
-**Work in progress, October 2026.** Built on OpenWrt 25.12.5 with kernel 6.12.94 and ddns-scripts 2.8.4. This part
-of the series describes the setup as planned. The AWS and router steps have not been run yet, so the console output
-is still missing.
+**Set up and tested in October 2026** on OpenWrt 25.12.5 with kernel 6.12.94 and ddns-scripts 2.8.4-8. This part of
+the series builds on the Essentials, the parts about Docker and WireGuard are coming soon.
 {{% /hint %}}
 
 In [OpenWrt on a Raspberry PI 4B: Essentials](openwrt-raspberry-pi-4b-essentials) I described how the PI gets its
@@ -667,7 +665,7 @@ these side effects.
 There are two other ways I considered but did not choose:
 
 - A container such as [ddns-route53](https://crazymax.dev/ddns-route53/) on the
-  [Docker](openwrt-raspberry-pi-4b-docker) installation. It works, but a whole container for a job a 100-line shell
+  Docker installation (article coming soon). It works, but a whole container for a job a 100-line shell
   script can do is too much in my opinion.
 - An [AWS Lambda](https://aws.amazon.com/lambda/) function behind a function URL, called by ddns-scripts with a
   custom update URL. This keeps the AWS keys off the router, but it means writing and maintaining code in AWS.
