@@ -671,6 +671,10 @@ root@OpenWrt:~# /etc/init.d/fstab enable
 `/opt` is mounted by `fstab` (S11) early during boot, long before any service that stores data there. I chose `/opt`
 because OpenWrt's Docker package already uses `/opt/docker/` as its default data directory.
 
+The data partition can also hold a swap file. I preferred that over a swap partition in the free space, because
+a new partition means another change to the partition table, and the reboot below shows what that can do. The Docker article
+(coming soon) explains why I added one.
+
 Then I rebooted, and the PI did not come back. The screen showed:
 
 ```text
