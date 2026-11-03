@@ -1,5 +1,5 @@
 ---
-weight: 8
+weight: 9
 title: "OpenWrt on a Raspberry PI 4B: WireGuard Server"
 draft: true
 aiAssisted: true
@@ -8,23 +8,28 @@ aiAssisted: true
 
 {{% hint info %}}
 **Work in progress, October 2026.** Built on OpenWrt 25.12.5 with kernel 6.12.94 and wireguard-tools 1.0.20260223.
-This is the third part of a series and describes what is running today.
+This part of the series builds on the Essentials and the Dynamic DNS article and describes what is running today.
 {{% /hint %}}
 
 In [OpenWrt on a Raspberry PI 4B: Essentials](openwrt-raspberry-pi-4b-essentials) I described the router itself, its
 IPv6 setup and the firewall defaults. If you haven't read that article yet, I suggest doing so first, because this
-one builds on it, in particular on the section about IPv6.
+one builds on it, in particular on the section about IPv6. The name the clients connect to comes from
+[OpenWrt on a Raspberry PI 4B: Dynamic DNS with AWS Route 53](openwrt-raspberry-pi-4b-ddns-route53), which keeps an
+A and an AAAA record pointed at the router's current addresses.
 
 This part adds a [WireGuard](https://www.wireguard.com/) server to the router, so that my phone and laptop can reach
 the LAN from anywhere and use my home connection to the internet, for example on a public Wi-Fi. A server like this
 must be reachable from the internet, which requires a public IPv4 address and not one behind
 [CGNAT](https://en.wikipedia.org/wiki/Carrier-grade_NAT). My provider hands out a public IPv4 address and a /48 IPv6
-prefix directly to the router, and there is no other router in front of it, so there is no port forwarding to set up
-anywhere else.
+prefix directly to the router's WAN port, and there is no other router in front of it, so there is no port forwarding
+to set up anywhere else. The [WAN](https://en.wikipedia.org/wiki/Wide_area_network) port, `eth1` on my PI, is the
+side of the router that faces the provider and the internet, as opposed to the LAN port that faces my devices at
+home. The addresses on it are the router's WAN addresses, and they are the only addresses of my home that the
+internet ever sees.
 
-(Note: throughout this article, `router.example.com` stands for the hostname the clients connect to. Keeping such a
-hostname up to date with a dynamic IP address is the topic of a separate article. As in the Essentials article, I
-replaced the ULA prefix with `fd12:3456:789a::/48` and removed all keys from the output)
+(Note: as in the Dynamic DNS article, `home.example.com` stands for the real name of the router, and `192.0.2.45`
+and `2001:db8:ffff:1::2a` for its WAN addresses. As in the Essentials article, I replaced the delegated prefix with
+`2001:db8:1234::/48` and the ULA prefix with `fd12:3456:789a::/48`, and removed all keys from the output)
 
 ## What OpenWrt offers
 
@@ -38,41 +43,79 @@ kmod-wireguard wireguard-tools luci-proto-wireguard qrencode
 WireGuard as a protocol to the interfaces in the web interface. It is worth mentioning that WireGuard on OpenWrt is
 not a separate service with its own configuration file. A WireGuard server is just an interface in
 `/etc/config/network`, and each client, a peer in WireGuard terms, is a section of that file as well. Once the
-package is installed, the web interface (Network → Interfaces → the WireGuard interface) offers the following:
+package is installed, the web interface (Network → Interfaces) can create such an interface, and it offers two
+ways to add a client to it:
 
-- **Generate new key pair** for the interface itself. The key is not generated in the browser. LuCI asks the router,
-  which runs `wg genkey` and `wg pubkey` (`/usr/share/rpcd/ucode/luci.wireguard`).
-- **Peers** with a description, their own **Generate new key pair** and **Generate preshared key** buttons, the
-  allowed IPs and the keepalive interval.
-- **Generate configuration…** on each peer creates a complete configuration file for the client, both as a QR code
-  for the WireGuard app on a phone and as a file to download for a laptop.
-- **Import configuration as peer…** goes the other way and creates a peer from a configuration that was created on
-  the client.
-- **Status → WireGuard** shows all peers with their latest handshake and the transferred data.
+- **The router creates the configuration for the client.** On a new peer, the router generates the client's keys
+  with **Generate new key pair** and **Generate preshared key**. **Generate configuration…** then turns them into a
+  complete client configuration, as a QR code for the WireGuard app on a phone or as a file to download for a laptop.
+  This is the way I use, and it is described in this article.
+- **The router reads an existing client configuration.** If a client already has a configuration, for example one
+  created in the WireGuard app, **Import configuration as peer…** creates the peer out of it, so nothing has to be
+  typed in by hand.
 
-That is all there is. There is no user management and no portal where a user could create their own access. For a
-handful of my own devices, I do not need any of that.
+Apart from that, Status → WireGuard shows all peers with their latest handshake and the transferred data. That is
+all there is. There is no user management and no portal where a user could create their own access. For a handful of
+my own devices, I do not need any of that.
 
 ### Where the client's private key lives
 
-There is one thing to keep in mind with the QR code. A client configuration contains the client's private key, so
-the router can only generate a QR code if it stores the private key of the peer in `/etc/config/network`. That also
-means it ends up in every configuration backup. There are three ways to deal with this:
+A client configuration contains the client's private key. So the router can only generate the QR code if it stores
+that key with the peer in `/etc/config/network`, and I keep it there. That way, I can show the QR code again at any
+time, for example for a new phone. The router holds its own private key anyway, and anybody who has access to the
+router or its backups can do much worse things than impersonating my phone. Please note, this makes the
+configuration backups secret, and I treat them accordingly.
 
-1. Generate the keys on the router, scan the QR code and keep the private key on the router. The QR code can be shown
-   again at any time, for example for a new phone.
-2. The same, but delete the private key of the peer after scanning. The QR code then cannot be generated anymore.
-3. Generate the keys on the client and only give its public key to the router. The router never sees a private key,
-   but it cannot generate a QR code either.
-
-I chose the first option. The router already holds its own private key, and anybody who has access to the router or
-its backups can do much worse things than impersonating my phone. Please note, this makes the configuration backups
-secret, and I treat them accordingly.
+(Note: the key can also be deleted from the router once the client is set up, as the help text of the field
+suggests, or generated on the client so that the router only ever sees the public key. Either way, the QR code cannot
+be generated anymore. For setups other than mine, the
+[OpenWrt WireGuard documentation](https://openwrt.org/docs/guide-user/services/vpn/wireguard/start) is the place to
+start)
 
 ## Addresses
 
+In order to get a better understanding of where the tunnel fits in, this is the whole picture: the router with its
+three networks, the LAN behind it, and the phone somewhere on a mobile network:
+
+{{< mermaid >}}
+flowchart TB
+  subgraph away["Away from home"]
+    phone["Phone<br/>in the tunnel:<br/>10.0.1.2<br/>fd12:3456:789a:ff::2"]
+  end
+  phone ---|"mobile network"| inet(("Internet"))
+  inet --- modem["NBN HFC modem<br/>(bridge only)"]
+  modem ---|"eth1 - WAN<br/>192.0.2.45<br/>2001:db8:ffff:1::2a/128"| fw
+  subgraph pi["Raspberry PI 4B - OpenWrt"]
+    direction LR
+    wg0["wg0 - zone vpn<br/>10.0.1.1/24<br/>fd12:3456:789a:ff::1/64"]
+    fw["Routing,<br/>firewall, NAT"]
+    docker0["docker0 - zone docker<br/>172.17.0.1/16<br/>no IPv6"]
+    wg0 --- fw
+    fw --- docker0
+  end
+  fw ---|"eth0 - br-lan - zone lan<br/>10.0.0.1/24<br/>2001:db8:1234::1/64<br/>fd12:3456:789a::1/64"| lan
+  subgraph home["LAN"]
+    lan["PC, TV, ...<br/>10.0.0.100 - 10.0.0.249<br/>2001:db8:1234::/64<br/>fd12:3456:789a::/64"]
+  end
+  phone -. "WireGuard tunnel<br/>UDP 51820 to home.example.com" .-> wg0
+{{< /mermaid >}}
+
+| Network | Where | IPv4 | IPv6 |
+|---|---|---|---|
+| WAN | `eth1`, the link to the provider | `192.0.2.45`, public, by DHCP | `2001:db8:ffff:1::2a/128`, public, by DHCPv6 |
+| Delegated prefix | Handed to the router by the provider | - | `2001:db8:1234::/48`, public |
+| LAN | `br-lan` on `eth0`, and every device behind it | `10.0.0.0/24`, devices get `.100` to `.249` by DHCP | `2001:db8:1234::/64` out of the delegated prefix, plus `fd12:3456:789a::/64` (ULA) |
+| Docker | `docker0`, inside the router | `172.17.0.0/16` | none |
+| Tunnel | `wg0`, inside the router | `10.0.1.0/24` | `fd12:3456:789a:ff::/64` (ULA) |
+
+The phone's own address on the mobile network does not matter and is often behind the provider's
+[CGNAT](https://en.wikipedia.org/wiki/Carrier-grade_NAT). The phone
+only needs to reach `home.example.com`, which resolves to the two WAN addresses, on UDP port 51820. Inside the tunnel,
+it uses its tunnel addresses, and everything it sends to the internet leaves the router with the WAN addresses
+`192.0.2.45` and `2001:db8:ffff:1::2a`, exactly like the traffic from the LAN.
+
 The tunnel is a network of its own, next to the LAN, and I gave it addresses that do not collide with anything else
-on the router (the LAN is `10.0.0.0/24`, Docker uses `172.17.0.0/16`):
+on the router:
 
 | | IPv4 | IPv6 |
 |---|---|---|
@@ -80,10 +123,27 @@ on the router (the LAN is `10.0.0.0/24`, Docker uses `172.17.0.0/16`):
 | Router | `10.0.1.1` | `fd12:3456:789a:ff::1` |
 | Phone | `10.0.1.2` | `fd12:3456:789a:ff::2` |
 
-For IPv6, I took a /64 out of the router's own ULA prefix rather than one out of the provider's /48. The latter would
-be the cleaner solution in theory, since the phone would get a real public IPv6 address. But the client
-configuration contains a fixed address, and as described in the Essentials article, the provider can hand out a
-different prefix after a reconnect. The ULA prefix never changes.
+The IPv4 addresses simply follow the LAN: `10.0.0.0/24` is the LAN, so `10.0.1.0/24` is the next network, with the
+router at `.1` and the phone at `.2`. The IPv6 addresses need a little more explanation. They come from the router's
+[Unique Local Address](https://en.wikipedia.org/wiki/Unique_local_address) (ULA) prefix, the IPv6 counterpart of a
+private IPv4 range. As described in the Essentials article, OpenWrt generated this prefix randomly at the first boot
+and it never changes:
+
+```shell
+root@OpenWrt:~# uci get network.globals.ula_prefix
+fd12:3456:789a::/48
+```
+
+A /48 prefix fixes the first three groups of the address, and the fourth group selects one of 65,536 networks of /64
+each. The LAN uses network `0`, which is `fd12:3456:789a::/64` (the zeros are omitted), and I picked network `ff` for
+the tunnel, which is `fd12:3456:789a:ff::/64`. That keeps it well away from the low numbers OpenWrt hands out to new
+interfaces with `ip6assign`, such as a VLAN later on. Within the tunnel network, the router gets `::1` and the phone
+`::2`, the same last numbers as in IPv4.
+
+I took this /64 out of the ULA prefix rather than out of the provider's /48. The latter would be the cleaner
+solution in theory, since the phone would get a real public IPv6 address. But the client configuration contains a
+fixed address, and as described in the Essentials article, the provider can hand out a different prefix after a
+reconnect. The ULA prefix never changes.
 
 The price for this is NAT for IPv6. As shown in the Essentials article, the router's default routes to the internet
 only apply to packets with a source address out of the provider's prefix, and a ULA address has no way out. So the
@@ -93,97 +153,136 @@ the tunnel to get out to the internet, I do not see a disadvantage.
 
 ## The interface and the first peer
 
-I set up the interface `wg0` and the first peer on the command line. The web interface creates exactly the same
-sections. `wg genkey`, `wg pubkey` and `wg genpsk` create the keys, and `umask go=` makes sure nobody but root can
-read them while they are in the shell:
+### The interface
+
+The WireGuard server is an interface like the LAN and the WAN, and it is created in the same place:
+
+1. Network → Interfaces → **Add new interface…**
+2. Name `wg0`, protocol **WireGuard VPN**, then **Create interface**.
+3. In the tab **General Settings**, **Generate new key pair** fills in the private and the public key of the router.
+   The listen port is `51820`, and the IP addresses are `10.0.1.1/24` and `fd12:3456:789a:ff::1/64` from the table
+   above.
+4. In the tab **Firewall Settings**, I typed `vpn` into **Create / Assign firewall-zone** to create a new zone for the
+   tunnel. The zone itself is the topic of the next section.
+
+### The first peer
+
+Each client is a peer in the tab **Peers** of the same dialog. **Add peer** opens the dialog for it:
+
+| Field | Value |
+|---|---|
+| Description | `phone` |
+| Public Key, Private Key | **Generate new key pair**. The private key stays on the router, as described above |
+| Preshared Key | **Generate preshared key** |
+| Allowed IPs | `10.0.1.2/32` and `fd12:3456:789a:ff::2/128` |
+| Route Allowed IPs | Off |
+| Endpoint Host, Endpoint Port | Empty |
+| Persistent Keep Alive | `25` |
+
+A few notes on these fields, since some of them do not mean what their names suggest:
+
+- **Allowed IPs** on the router are not the addresses the phone may reach. They are the addresses the phone may use
+  inside the tunnel, a /32 and a /128 per peer. LuCI also copies them into the client configuration as the phone's
+  own addresses, so they must be filled in before the configuration is generated. Otherwise, the configuration has
+  no address, and the WireGuard app refuses to start the tunnel with "at least one address must be specified".
+- **Route Allowed IPs** is not needed, since the addresses are already part of the tunnel network.
+- **Endpoint Host and Endpoint Port** are where the router would find the peer. The router does not know in advance
+  where the phone will connect from, and WireGuard learns it from the first handshake. So both stay empty, in
+  particular the port, because LuCI writes it into the client configuration as its `ListenPort`, which pins the
+  phone to a fixed port.
+- **The preshared key** is optional. It adds a second, symmetric key to the handshake as protection against a future
+  quantum computer breaking the public key cryptography.
+- **Persistent Keep Alive** is not needed on the router either, but LuCI copies it into the client configuration,
+  where it keeps the connection alive through the NAT of a mobile network.
+
+After **Save** in both dialogs and **Save & Apply** on the Interfaces page, the interface is up. Please note, changes
+to peers only take effect after the interface is restarted (**Restart** on `wg0`). "Save & Apply" alone is not
+enough.
+
+### On the command line
+
+The same on the command line, for example to set up the next router quickly. `umask go=` makes sure nobody but root
+can read the keys while they are in the shell:
 
 ```shell
 root@OpenWrt:~# umask go=
-root@OpenWrt:~# ULA=fd12:3456:789a
 root@OpenWrt:~# PEER_KEY=$(wg genkey)
-root@OpenWrt:~# uci set network.wg0=interface
-root@OpenWrt:~# uci set network.wg0.proto='wireguard'
-root@OpenWrt:~# uci set network.wg0.private_key="$(wg genkey)"
-root@OpenWrt:~# uci set network.wg0.listen_port='51820'
-root@OpenWrt:~# uci add_list network.wg0.addresses='10.0.1.1/24'
-root@OpenWrt:~# uci add_list network.wg0.addresses="$ULA:ff::1/64"
-root@OpenWrt:~# uci set network.phone=wireguard_wg0
-root@OpenWrt:~# uci set network.phone.description='phone'
-root@OpenWrt:~# uci set network.phone.private_key="$PEER_KEY"
-root@OpenWrt:~# uci set network.phone.public_key="$(echo "$PEER_KEY" | wg pubkey)"
-root@OpenWrt:~# uci set network.phone.preshared_key="$(wg genpsk)"
-root@OpenWrt:~# uci add_list network.phone.allowed_ips='10.0.1.2/32'
-root@OpenWrt:~# uci add_list network.phone.allowed_ips="$ULA:ff::2/128"
-root@OpenWrt:~# uci set network.phone.persistent_keepalive='25'
+root@OpenWrt:~# uci batch <<EOF
+set network.wg0=interface
+set network.wg0.proto='wireguard'
+set network.wg0.private_key='$(wg genkey)'
+set network.wg0.listen_port='51820'
+add_list network.wg0.addresses='10.0.1.1/24'
+add_list network.wg0.addresses='fd12:3456:789a:ff::1/64'
+set network.phone=wireguard_wg0
+set network.phone.description='phone'
+set network.phone.private_key='$PEER_KEY'
+set network.phone.public_key='$(echo "$PEER_KEY" | wg pubkey)'
+set network.phone.preshared_key='$(wg genpsk)'
+add_list network.phone.allowed_ips='10.0.1.2/32'
+add_list network.phone.allowed_ips='fd12:3456:789a:ff::2/128'
+set network.phone.persistent_keepalive='25'
+EOF
 root@OpenWrt:~# uci commit network
 root@OpenWrt:~# service network reload
 ```
 
-A few notes on the options:
-
-- **The section type** `wireguard_wg0` is what makes a section a peer of the interface `wg0`.
-- **`allowed_ips`** on the server side are the addresses the peer may use inside the tunnel, a /32 and a /128 per
-  peer. They do not need their own routes, since they are part of the tunnel network.
-- **The preshared key** is optional. It adds a second, symmetric key to the handshake as protection against a
-  future quantum computer breaking the public key cryptography.
-- **`persistent_keepalive`** is not needed on the server, but LuCI copies it into the client configuration, where it
-  keeps the connection alive through the NAT of a mobile network.
-
-The peer has no endpoint, because the router does not know in advance where the phone will connect from. WireGuard
-learns it from the first handshake.
+The section type `wireguard_wg0` is what makes a section a peer of the interface `wg0`.
 
 ## Firewall
 
 The OpenWrt wiki puts the WireGuard interface into the `lan` zone. I gave it a zone of its own instead, so that what
-the VPN clients may reach is written down explicitly and can be restricted later. At the moment, they may reach the
-router, the LAN and the internet, but nothing can be forwarded into the tunnel from elsewhere:
+the VPN clients may reach is written down explicitly and can be restricted later. Three things are needed: the zone,
+a rule that lets the clients in from the internet, and NAT for IPv6.
 
-```shell
-root@OpenWrt:~# uci set firewall.vpn=zone
-root@OpenWrt:~# uci set firewall.vpn.name='vpn'
-root@OpenWrt:~# uci add_list firewall.vpn.network='wg0'
-root@OpenWrt:~# uci set firewall.vpn.input='ACCEPT'
-root@OpenWrt:~# uci set firewall.vpn.output='ACCEPT'
-root@OpenWrt:~# uci set firewall.vpn.forward='REJECT'
-root@OpenWrt:~# uci set firewall.vpn_lan=forwarding
-root@OpenWrt:~# uci set firewall.vpn_lan.src='vpn'
-root@OpenWrt:~# uci set firewall.vpn_lan.dest='lan'
-root@OpenWrt:~# uci set firewall.vpn_wan=forwarding
-root@OpenWrt:~# uci set firewall.vpn_wan.src='vpn'
-root@OpenWrt:~# uci set firewall.vpn_wan.dest='wan'
-```
+### The zone
 
-The rule which opens the router to the internet is a single one. It allows UDP port 51820 from the `wan` zone to the
-router itself. Without a `family` option, it applies to IPv4 and IPv6:
+A zone created from the interface dialog takes the firewall's defaults, which reject everything into the router and
+everything forwarded. In Network → Firewall → **General Settings**, **Edit** on the zone `vpn`:
 
-```shell
-root@OpenWrt:~# uci set firewall.wg=rule
-root@OpenWrt:~# uci set firewall.wg.name='Allow-WireGuard'
-root@OpenWrt:~# uci set firewall.wg.src='wan'
-root@OpenWrt:~# uci set firewall.wg.proto='udp'
-root@OpenWrt:~# uci set firewall.wg.dest_port='51820'
-root@OpenWrt:~# uci set firewall.wg.target='ACCEPT'
-```
+| Field | Value |
+|---|---|
+| Input | accept |
+| Output | accept |
+| Intra zone forward | reject |
+| Covered networks | `wg0` (already set by the interface dialog) |
+| Allow forward to destination zones | `lan` and `wan` |
 
-It is worth mentioning that WireGuard does not answer at all to a packet that is not signed with a known key. A port
-scan gets no answer from this port, which makes it look like a filtered port rather than a service.
+So the clients may reach the router, the LAN and the internet, but nothing can be forwarded into the tunnel from
+elsewhere. Input must be accepted, because the router is the DNS server of the clients. For IPv4, the `wan` zone
+already masquerades everything that leaves through it (IPv4 Masquerading), including the tunnel.
 
-For IPv4, the `wan` zone already masquerades everything that leaves through it (`masq='1'`), including the tunnel.
-For IPv6, `masq6` on the zone would translate the LAN as well, which is exactly what I do not want. A `nat` section
-limited to the tunnel's source addresses does the job instead:
+### Opening the port
 
-```shell
-root@OpenWrt:~# uci set firewall.vpn_nat6=nat
-root@OpenWrt:~# uci set firewall.vpn_nat6.name='Masquerade-VPN-IPv6'
-root@OpenWrt:~# uci set firewall.vpn_nat6.family='ipv6'
-root@OpenWrt:~# uci set firewall.vpn_nat6.src='wan'
-root@OpenWrt:~# uci set firewall.vpn_nat6.src_ip='fd12:3456:789a:ff::/64'
-root@OpenWrt:~# uci set firewall.vpn_nat6.target='MASQUERADE'
-root@OpenWrt:~# uci commit firewall
-root@OpenWrt:~# service firewall restart
-```
+The rule which opens the router to the internet is a single one. In Network → Firewall → **Traffic Rules**, **Add**:
 
-(Note: in a `nat` section, `src` is the zone the packets leave through, not the one they come from)
+| Field | Value |
+|---|---|
+| Name | `Allow-WireGuard` |
+| Protocol | UDP |
+| Source zone | `wan` |
+| Destination zone | Device (input), the router itself |
+| Destination port | `51820` |
+| Action | accept |
+
+"Restrict to address family" stays at "IPv4 and IPv6", so the rule applies to both. It is worth mentioning that
+WireGuard does not answer at all to a packet that is not signed with a known key. A port scan gets no answer from
+this port, which makes it look like a filtered port rather than a service.
+
+### NAT for IPv6
+
+The `wan` zone also has an option "IPv6 Masquerading", but it would translate the whole LAN as well, which is exactly
+what I do not want. And restricting it to the tunnel with "Restrict Masquerading to given source subnets" would
+restrict the masquerading for IPv4 as well. A NAT rule limited to the tunnel's addresses does the job instead. In
+Network → Firewall → **NAT Rules**, **Add**:
+
+| Field | Value |
+|---|---|
+| Name | `Masquerade-VPN-IPv6` |
+| Restrict to address family | IPv6 only |
+| Outbound zone | `wan` |
+| Source address | `fd12:3456:789a:ff::/64` |
+| Action | MASQUERADE - Automatically rewrite to outbound interface IP |
 
 The generated nftables rules show that the translation only applies to the tunnel and only on the WAN port:
 
@@ -196,6 +295,44 @@ table inet fw4 {
   }
 }
 ```
+
+### On the command line
+
+The same on the command line. The zone gets its own section name here, which the interface dialog does not do, but
+it does not make a difference:
+
+```shell
+root@OpenWrt:~# uci batch <<EOF
+set firewall.vpn=zone
+set firewall.vpn.name='vpn'
+add_list firewall.vpn.network='wg0'
+set firewall.vpn.input='ACCEPT'
+set firewall.vpn.output='ACCEPT'
+set firewall.vpn.forward='REJECT'
+set firewall.vpn_lan=forwarding
+set firewall.vpn_lan.src='vpn'
+set firewall.vpn_lan.dest='lan'
+set firewall.vpn_wan=forwarding
+set firewall.vpn_wan.src='vpn'
+set firewall.vpn_wan.dest='wan'
+set firewall.wg=rule
+set firewall.wg.name='Allow-WireGuard'
+set firewall.wg.src='wan'
+set firewall.wg.proto='udp'
+set firewall.wg.dest_port='51820'
+set firewall.wg.target='ACCEPT'
+set firewall.vpn_nat6=nat
+set firewall.vpn_nat6.name='Masquerade-VPN-IPv6'
+set firewall.vpn_nat6.family='ipv6'
+set firewall.vpn_nat6.src='wan'
+set firewall.vpn_nat6.src_ip='fd12:3456:789a:ff::/64'
+set firewall.vpn_nat6.target='MASQUERADE'
+EOF
+root@OpenWrt:~# uci commit firewall
+root@OpenWrt:~# service firewall restart
+```
+
+(Note: in a `nat` section, `src` is the zone the packets leave through, not the one they come from)
 
 ## Checking it on the router
 
@@ -221,8 +358,16 @@ The peer has no `endpoint` and no `latest handshake` yet, since no client has co
 
 ## Connecting the phone
 
-On the peer in the web interface, **Generate configuration…** opens a dialog with the QR code and the configuration
-in plain text next to it. These are the defaults it fills in:
+The QR code is a little hidden. It is not on the interface itself, but in the edit dialog of each peer:
+
+1. Network → Interfaces, then **Edit** on `wg0`.
+2. The **Peers** tab, then **Edit** on the peer `phone`.
+3. At the very bottom of the peer dialog, the field "Configuration Export" has the button **Generate configuration…**.
+
+The button is greyed out if the router does not store the private key of the peer, as described above. It opens a
+dialog with the QR code and the configuration in plain text next to it. The configuration is built from the fields of
+the peer, so they must be filled in first, as described in the section about the first peer. These are the defaults
+the dialog fills in:
 
 | Field | Default |
 |---|---|
@@ -233,8 +378,9 @@ in plain text next to it. These are the defaults it fills in:
 
 The defaults were exactly what I wanted: all traffic through the tunnel, and the router as DNS server, so that names
 in the LAN resolve on the phone as well. The router accepts DNS queries on its LAN address from the tunnel because
-the `vpn` zone has `input='ACCEPT'`. The only field I changed is the endpoint, which I set to `router.example.com`.
-The generated configuration looks like this:
+the `vpn` zone has `input='ACCEPT'`. Since the two DDNS services from the Dynamic DNS article are enabled, the dialog
+picks their `lookup_host`, `home.example.com`, as the endpoint, and I did not have to change anything. The
+generated configuration looks like this:
 
 ```text
 [Interface]
@@ -247,15 +393,11 @@ DNS = 10.0.0.1
 PublicKey = (hidden)
 PresharedKey = (hidden)
 AllowedIPs = 0.0.0.0/0, ::/0
-Endpoint = router.example.com:51820
+Endpoint = home.example.com:51820
 PersistentKeepAlive = 25
 ```
 
-(Note: the dialog takes the client's `ListenPort` from the peer's "Endpoint Port" field. So that field must stay
-empty for a phone, otherwise the client is pinned to a fixed port)
-
-Please note, changes to peers only take effect after the WireGuard interface is restarted. "Save & Apply" alone is
-not enough.
+The phone needs nothing else. In the WireGuard app, "Create from QR code" imports the whole configuration.
 
 ## Test
 
@@ -271,5 +413,6 @@ keys of the router and all peers.
 
 The router runs a WireGuard server on UDP port 51820 with its own firewall zone. Clients get an address from
 `10.0.1.0/24` and a ULA address, may reach the LAN and the internet, and are set up by scanning a QR code from the web
-interface. The next step is keeping `router.example.com` pointed at the router's current IP address, which is the
-topic of a separate article.
+interface. They connect to `home.example.com`, which the router keeps up to date in Route 53 itself. The next part
+of the series is the second Wi-Fi network on VLAN 2 whose traffic leaves through a WireGuard tunnel in another
+country.
