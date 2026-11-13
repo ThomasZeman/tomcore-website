@@ -7,7 +7,8 @@ aiAssisted: true
 
 {{% hint info %}}
 **Set up and tested in October 2026** on OpenWrt 25.12.5 with kernel 6.12.94 and ddns-scripts 2.8.4-8. This part of
-the series builds on the Essentials, the parts about Docker and WireGuard are coming soon.
+the series builds on the Essentials. The name is the endpoint of the
+[WireGuard Server](openwrt-raspberry-pi-4b-wireguard).
 {{% /hint %}}
 
 In [OpenWrt on a Raspberry PI 4B: Essentials](openwrt-raspberry-pi-4b-essentials) I described how the PI gets its
@@ -688,5 +689,5 @@ is rebuilt into every new image by owut.
 ## Summary and next steps
 
 With one small package and a narrowly scoped IAM user, the router keeps an A and an AAAA record in Route 53 up to
-date without any additional service. The name will be the endpoint of the WireGuard server, which is the topic of
-the next part.
+date without any additional service. The name is the endpoint of the WireGuard server, which is the topic of
+[the next part](openwrt-raspberry-pi-4b-wireguard).

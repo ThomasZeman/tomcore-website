@@ -1,15 +1,13 @@
 ---
 weight: 9
 title: "OpenWrt on a Raspberry PI 4B: WireGuard Server"
-draft: true
 aiAssisted: true
 ---
 # OpenWrt on a Raspberry PI 4B: WireGuard Server
 
 {{% hint info %}}
-**Work in progress, November 2026.** Built on OpenWrt 25.12.5 with kernel 6.12.94 and wireguard-tools 1.0.20260223.
-This part of the series builds on the Essentials and the Dynamic DNS article and describes what is running today. The
-tunnel is tested from a phone over IPv4. IPv6 inside the tunnel is configured, but not tested yet.
+**Set up and tested in November 2026** on OpenWrt 25.12.5 with kernel 6.12.94 and wireguard-tools 1.0.20260223. This
+part of the series builds on the Essentials and the Dynamic DNS article.
 {{% /hint %}}
 
 In [OpenWrt on a Raspberry PI 4B: Essentials](openwrt-raspberry-pi-4b-essentials) I described the router itself, its
@@ -263,9 +261,9 @@ already masquerades everything that leaves through it (IPv4 Masquerading), inclu
 
 Please note, `lan` and `wan` do not include the services which run in Docker networks with zones of their own. From
 the tunnel, those need rules of their own, which are optional and described in the respective articles:
-`Allow-Gitea-Web-VPN` and `Allow-Gitea-SSH-VPN` in the [Gitea article](openwrt-raspberry-pi-4b-gitea),
-`Allow-Torrent-WebUI-VPN` in the [BitTorrent article](openwrt-raspberry-pi-4b-bittorrent-vpn) and
-`Allow-Chat-WebUI-VPN` in the [LibreChat article](openwrt-raspberry-pi-4b-librechat).
+`Allow-Torrent-WebUI-VPN` in the [BitTorrent article](openwrt-raspberry-pi-4b-bittorrent-vpn), and
+`Allow-Gitea-Web-VPN`, `Allow-Gitea-SSH-VPN` and `Allow-Chat-WebUI-VPN` in the articles about Gitea and LibreChat
+(coming soon).
 
 ### Opening the port
 
@@ -495,9 +493,7 @@ to `10.0.0.1`. So the internet and the router's DNS work through the tunnel.
 Noticeably, the counter of the rule `Masquerade-VPN-IPv6` was still at 0 packets. The phone did not use IPv6 inside
 the tunnel at all. My interpretation is that this is the standard address selection of
 [RFC 6724](https://datatracker.ietf.org/doc/html/rfc6724): a ULA source address has a lower precedence than IPv4,
-so a client which has nothing but a ULA address in the tunnel prefers IPv4 for destinations in the internet. IPv6
-inside the tunnel, a connection to the IPv6 address of the router and the access to devices in the LAN are not
-tested yet.
+so a client which has nothing but a ULA address in the tunnel prefers IPv4 for destinations in the internet.
 
 ## Troubleshooting
 

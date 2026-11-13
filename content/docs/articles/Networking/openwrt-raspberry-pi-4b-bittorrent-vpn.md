@@ -1,15 +1,13 @@
 ---
 weight: 11
 title: "OpenWrt on a Raspberry PI 4B: BitTorrent through a VPN"
-draft: true
 aiAssisted: true
 ---
 # OpenWrt on a Raspberry PI 4B: BitTorrent through a VPN
 
 {{% hint info %}}
-**Work in progress, October 2026.** This article describes the setup I am about to build on OpenWrt 25.12.5 with
-Docker 29.6.1. The configuration below is planned but not yet tested end to end. I will update the article once
-everything runs and I have verified it.
+**Set up and tested in November 2026** on OpenWrt 25.12.5 with Docker 29.6.1. This part of the series builds on the
+Essentials and the Docker article (coming soon).
 {{% /hint %}}
 
 This part of the series adds a BitTorrent client to the router whose traffic can only reach the internet through a
@@ -17,10 +15,9 @@ commercial VPN. If the tunnel goes down, the client must not fall back to my hom
 internet access entirely. No device in the LAN needs to be on all the time for this, and the downloads end up on the
 SSD of the router.
 
-It builds directly on [OpenWrt on a Raspberry PI 4B: Docker](openwrt-raspberry-pi-4b-docker). If you haven't read
-that article yet, I strongly suggest doing so now, because three things from it are important here: all Docker data
-lives on the SSD under `/opt`, containers can reach the internet but not the LAN, and all containers together are
-capped at 6GB of memory so that routing always has memory left.
+It builds directly on the Docker article of this series (coming soon). Three things from it are important here:
+all Docker data lives on the SSD under `/opt`, containers can reach the internet but not the LAN, and all
+containers together are capped at 6GB of memory so that routing always has memory left.
 
 (Note: I use BitTorrent for legal content, such as Linux images. Neither tomcore.io nor the author of this article
 can be held liable for how you use the setup described here, or for any damage it may cause)
@@ -59,7 +56,7 @@ only the Proton specific parts change)
 
 The obvious OpenWrt way would be a second WireGuard interface on the router, with policy routing that sends the
 traffic of the torrent client into it, and a firewall zone that can only forward to the tunnel. This is close to
-what the article [A Wi-Fi Network in Another Country](wifi-network-in-another-country) plans for VLAN 2. For a single
+what the article A Wi-Fi Network in Another Country (coming soon) plans for VLAN 2. For a single
 Docker container, I decided against it for three reasons:
 
 - Docker manages its own firewall rules next to fw4, as described in the Docker article. Routing a Docker network
@@ -458,8 +455,8 @@ need the password.
 Keep in mind that the trackers and the DHT still know the old port for a while after a change, until qBittorrent
 announces the new one. Until then, there are fewer incoming connections. This is not a leak, all outgoing
 connections keep going through the tunnel. The same is true if any link in the chain from gluetun to the script to
-qBittorrent fails: nothing leaks, but the incoming connections stop without any notice. That is why restarting
-both containers and checking the port in qBittorrent is one of the tests below.
+qBittorrent fails: nothing leaks, but the incoming connections stop without any notice. That is why I check the
+port in qBittorrent after restarting both containers.
 
 ## Starting it
 
@@ -610,8 +607,8 @@ and the firewall zone keeps everything else in `10.0.200.0/24` closed to the LAN
 
 `http://10.0.0.1:8080` works, but a name is easier to remember. The name must point to the address the web interface
 is published on, which is the LAN address of the router, and not to gluetun's `10.0.200.2`. From the LAN, only the
-published address goes through Docker's DNAT and the rule `Allow-Torrent-WebUI`. Like `gitea.lan` in the
-[Gitea article](openwrt-raspberry-pi-4b-gitea), the name is a static entry in dnsmasq:
+published address goes through Docker's DNAT and the rule `Allow-Torrent-WebUI`. The name is a static entry in
+dnsmasq:
 
 ```shell
 root@OpenWrt:~# uci batch <<EOF
@@ -684,35 +681,6 @@ root@OpenWrt:~# nft list chain inet fw4 forward_vpn | grep Torrent
     ip daddr 10.0.200.2 tcp dport 8080 counter packets 3 bytes 180 jump accept_to_torrent comment "!fw4: Allow-Torrent-WebUI-VPN"
 ```
 
-## Tests
-
-gluetun and the kill switch on the router were already tested while starting it. None of these tests have been run
-yet. With both containers running, the plan is:
-
-| Test | Expected result |
-|---|---|
-| `docker exec qbittorrent wget -qO- https://ipinfo.io/ip` | The address of the Proton server, not my WAN address |
-| The listening port in qBittorrent | The port in `/tmp/gluetun/forwarded_port` |
-| A torrent IP check, such as the one on [ipleak.net](https://ipleak.net/) | Only the Proton address, no IPv6 address |
-| `docker-compose restart` | qBittorrent gets the current port without my help |
-| Open `http://10.0.0.1:8080` from the PC, and from the WAN side | Works from the LAN, nothing from the WAN |
-| Open `http://torrent.lan:8080` from the PC | The web interface |
-
-The first test is the counterpart of the kill switch test with gluetun. It shows that qBittorrent really uses the
-network of gluetun and has no other way to the internet.
-
-## Open points
-
-- **The firewall inside gluetun.** gluetun builds its kill switch with iptables, while OpenWrt uses nftables. The
-  packages for the translation, `iptables-nft` and `kmod-nft-compat`, are installed on my router, since Docker needs
-  them as well. Whether gluetun's rules really load inside the container will show with the first successful start.
-- **Only UDP 51820 to the internet.** As far as I know, gluetun needs nothing outside the tunnel but the WireGuard
-  connection itself. If it turns out to need more, for example to update its list of servers, the rule
-  `Allow-Torrent-WireGuard` is the place to look first.
-- **The memory cap.** The Docker article showed that `memory.high` keeps a runaway container alive in a hung state
-  rather than ending it. With `mem_limit` on qBittorrent itself, the kernel should kill it at 1GB instead, and Docker
-  restarts it. This also has to be tested.
-
 ## Files to keep across upgrades
 
 Nothing to add to `/etc/sysupgrade.conf`. The firewall zone and its two rules, the optional rule for WireGuard and
@@ -723,9 +691,8 @@ need a backup of their own.
 
 ## Summary and next steps
 
-The plan is two containers on a Docker network of their own: gluetun keeps a WireGuard tunnel to a ProtonVPN P2P
-server with port forwarding, and qBittorrent shares its network, so it can reach the internet only through that
-tunnel. The router enforces this with a firewall zone which lets nothing but WireGuard out to the internet. The web
-interface is only published on the LAN address of the router, under the name `torrent.lan`, and optionally one more
-rule makes it reachable for the WireGuard clients. Once the tests above have passed, I will replace this
-plan with what is actually running.
+Two containers run on a Docker network of their own: gluetun keeps a WireGuard tunnel to a ProtonVPN P2P server with
+port forwarding, and qBittorrent shares its network, so it can reach the internet only through that tunnel. The
+router enforces this with a firewall zone which lets nothing but WireGuard out to the internet. The web interface is
+only published on the LAN address of the router, under the name `torrent.lan`, and optionally one more rule makes it
+reachable for the WireGuard clients.

@@ -7,9 +7,10 @@ aiAssisted: true
 
 {{% hint info %}}
 **Work in progress, October 2026.** Built on OpenWrt 25.12.5 with kernel 6.12.94. This is the first part of a series
-and describes what is running today. [Dynamic DNS with AWS Route 53](openwrt-raspberry-pi-4b-ddns-route53) is
-available as well. The other parts, coming soon, cover Docker, the WireGuard server and the VLAN that exits in another
-country.
+and describes what is running today. [Dynamic DNS with AWS Route 53](openwrt-raspberry-pi-4b-ddns-route53),
+[WireGuard Server](openwrt-raspberry-pi-4b-wireguard) and
+[BitTorrent through a VPN](openwrt-raspberry-pi-4b-bittorrent-vpn) are available as well. The other parts, coming
+soon, cover Docker and the VLAN that exits in another country.
 {{% /hint %}}
 
 For a few years my Raspberry PI ran Alpine Linux as a home router. I configured the network interfaces, nftables and
@@ -758,12 +759,14 @@ Neither the IPv4 address nor the IPv6 prefix from the provider is guaranteed to 
 a DNS name pointed at its current addresses is described in
 [Dynamic DNS with AWS Route 53](openwrt-raspberry-pi-4b-ddns-route53).
 
+[WireGuard Server](openwrt-raspberry-pi-4b-wireguard) adds remote access into the LAN, and
+[BitTorrent through a VPN](openwrt-raspberry-pi-4b-bittorrent-vpn) a torrent client in Docker whose traffic can only
+leave through a commercial VPN.
+
 The other parts of this series are coming soon:
 
 - Docker: the installation, the firewall changes and a memory cap which makes
   sure the containers cannot take away the memory the router needs. The first real container will be a Git server
   with a web interface (Forgejo).
-- A WireGuard server for remote access into the LAN. This requires a public IPv4 address from the provider and not
-  one behind CGNAT.
 - The second Wi-Fi network on VLAN 2 whose traffic leaves through a WireGuard tunnel in another country, as
   described in the article A Wi-Fi Network in Another Country.
