@@ -1,5 +1,5 @@
 ---
-weight: 7
+weight: 6
 title: "OpenWrt on a Raspberry PI 4B: Docker"
 aiAssisted: true
 ---

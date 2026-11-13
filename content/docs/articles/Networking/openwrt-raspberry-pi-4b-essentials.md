@@ -6,12 +6,13 @@ aiAssisted: true
 # OpenWrt on a Raspberry PI 4B: Essentials
 
 {{% hint info %}}
-**Work in progress, October 2026.** Built on OpenWrt 25.12.5 with kernel 6.12.94. This is the first part of a series
-and describes what is running today. [Dynamic DNS with AWS Route 53](openwrt-raspberry-pi-4b-ddns-route53),
-[WireGuard Server](openwrt-raspberry-pi-4b-wireguard),
-[Docker](openwrt-raspberry-pi-4b-docker), [BitTorrent through a VPN](openwrt-raspberry-pi-4b-bittorrent-vpn),
+**Work in progress, October 2026.** Built on OpenWrt 25.12.5 with kernel 6.12.94. This is the first hands-on part of a
+series and describes what is running today. Why I run my own router at all, and how the PI is connected to the NBN,
+is explained in the introduction [Why Run Your Own Router](openwrt-raspberry-pi-4b-why-own-router).
+[Docker](openwrt-raspberry-pi-4b-docker), [Dynamic DNS with AWS Route 53](openwrt-raspberry-pi-4b-ddns-route53),
+[WireGuard Server](openwrt-raspberry-pi-4b-wireguard), [BitTorrent through a VPN](openwrt-raspberry-pi-4b-bittorrent-vpn),
 [A Windows File Share with ksmbd](openwrt-raspberry-pi-4b-file-share-ksmbd),
-[LibreChat](openwrt-raspberry-pi-4b-librechat) and [Gitea](openwrt-raspberry-pi-4b-gitea) are available as well.
+[Gitea](openwrt-raspberry-pi-4b-gitea) and [LibreChat](openwrt-raspberry-pi-4b-librechat) are available as well.
 [Network Architecture](openwrt-raspberry-pi-4b-network-architecture) shows how they fit together. The VLAN that
 exits in another country is described in [A Wi-Fi Network in Another Country](wifi-network-in-another-country).
 {{% /hint %}}

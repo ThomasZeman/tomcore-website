@@ -1,5 +1,5 @@
 ---
-weight: 9
+weight: 8
 title: "OpenWrt on a Raspberry PI 4B: WireGuard Server"
 aiAssisted: true
 ---
@@ -536,6 +536,6 @@ The router runs a WireGuard server on UDP port 51820 with its own firewall zone.
 `10.0.1.0/24` and a ULA address, may reach the LAN and the internet, and are set up by scanning a QR code from the web
 interface, one peer per device. They connect to `home.example.com`, which the router keeps up to date in Route 53
 itself. The two pitfalls I ran into are LuCI's unsaved changes and peer changes which need a restart of `wg0`. The
-next part
-of the series is the second Wi-Fi network on VLAN 2 whose traffic leaves through a WireGuard tunnel in another
-country.
+next part of the series is [BitTorrent through a VPN](openwrt-raspberry-pi-4b-bittorrent-vpn). A second Wi-Fi network
+on VLAN 2 whose traffic leaves through a WireGuard tunnel in another country is planned and described in
+[A Wi-Fi Network in Another Country](wifi-network-in-another-country).

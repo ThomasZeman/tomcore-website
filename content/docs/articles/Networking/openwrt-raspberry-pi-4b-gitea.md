@@ -1,5 +1,5 @@
 ---
-weight: 14
+weight: 11
 title: "OpenWrt on a Raspberry PI 4B: Gitea"
 aiAssisted: true
 ---

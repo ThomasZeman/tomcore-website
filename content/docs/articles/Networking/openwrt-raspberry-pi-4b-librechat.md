@@ -1,5 +1,5 @@
 ---
-weight: 13
+weight: 12
 title: "OpenWrt on a Raspberry PI 4B: LibreChat"
 aiAssisted: true
 ---

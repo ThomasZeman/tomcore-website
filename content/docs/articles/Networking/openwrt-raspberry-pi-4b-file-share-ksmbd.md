@@ -1,5 +1,5 @@
 ---
-weight: 12
+weight: 10
 title: "OpenWrt on a Raspberry PI 4B: A Windows File Share with ksmbd"
 aiAssisted: true
 ---

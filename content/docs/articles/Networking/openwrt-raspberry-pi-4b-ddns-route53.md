@@ -1,5 +1,5 @@
 ---
-weight: 8
+weight: 7
 title: "OpenWrt on a Raspberry PI 4B: Dynamic DNS with AWS Route 53"
 aiAssisted: true
 ---

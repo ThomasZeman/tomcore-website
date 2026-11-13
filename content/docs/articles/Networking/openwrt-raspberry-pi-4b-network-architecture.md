@@ -1,5 +1,5 @@
 ---
-weight: 6
+weight: 14
 title: "OpenWrt on a Raspberry PI 4B: Network Architecture"
 aiAssisted: true
 ---
@@ -11,13 +11,14 @@ whole, across all parts of the series, and I update it together with every other
 running yet are marked as such.
 {{% /hint %}}
 
-Each part of this series describes one piece of my router: the [Essentials](openwrt-raspberry-pi-4b-essentials),
+Each part of this series describes one piece of my router, after the introduction
+[Why Run Your Own Router](openwrt-raspberry-pi-4b-why-own-router): the [Essentials](openwrt-raspberry-pi-4b-essentials),
 [Docker](openwrt-raspberry-pi-4b-docker), [Dynamic DNS with AWS Route 53](openwrt-raspberry-pi-4b-ddns-route53), the
 [WireGuard Server](openwrt-raspberry-pi-4b-wireguard),
 [BitTorrent through a VPN](openwrt-raspberry-pi-4b-bittorrent-vpn), the
 [Windows File Share with ksmbd](openwrt-raspberry-pi-4b-file-share-ksmbd),
-[LibreChat](openwrt-raspberry-pi-4b-librechat)
-and [Gitea](openwrt-raspberry-pi-4b-gitea). Every one of them adds a network, a firewall zone, a rule or a name, and
+[Gitea](openwrt-raspberry-pi-4b-gitea)
+and [LibreChat](openwrt-raspberry-pi-4b-librechat). Every one of them adds a network, a firewall zone, a rule or a name, and
 after a few parts, I found it hard to keep the whole picture in my head. This page puts everything in one place: the
 networks and their addresses, the firewall zones and what may pass between them, where names are resolved, which
 services the router offers on which network, and a server in the LAN, in my case a NAS, including how it can be
