@@ -139,15 +139,73 @@ root@router:~# cat /etc/ksmbd/ksmbd.conf
 - **Old protocol versions are off.** SMB 1 is only enabled with the option `allow_legacy_protocols`, which is off
   by default, and it should stay that way.
 
-## The password
+## The SMB login
 
-The SMB password is set with `ksmbd.adduser`, which prompts for it. That way, it does not end up in the shell
-history:
+The login consists of a user name and a password. The user name is the Linux user, `media`, and it has to be listed
+in the `users` option of the share. The password is separate from the Linux password and lives in the ksmbd password
+database `/etc/ksmbd/ksmbdpwd.db`. Everything around this database is done with `ksmbd.adduser`. The web interface
+does not manage SMB users.
+
+In order to find out how the commands behave, I tested them with a throwaway user before writing this section, so
+that the password of `media` stayed untouched.
+
+### 1. Setting the password
+
+`-a` adds the user to the database and prompts for the password. That way, it does not end up in the shell history:
 
 ```shell
-root@OpenWrt:~# ksmbd.adduser -a media
-root@OpenWrt:~# service ksmbd restart
+root@router:~# ksmbd.adduser -a media
 ```
+
+It is worth mentioning that `ksmbd.adduser` also has a `-p` option which takes the password on the command line.
+I do not use it for real passwords, because the password would then be in the shell history.
+
+### 2. Changing the password
+
+`-u` updates an existing user and prompts for the new password. This is the output for my test user `smbtest`:
+
+```shell
+root@router:~# ksmbd.adduser -u smbtest
+...
+[ksmbd.adduser/12408]: INFO: Wrote `/etc/ksmbd/ksmbdpwd.db'
+[ksmbd.adduser/12408]: INFO: Updated user `smbtest'
+[ksmbd.adduser/12408]: INFO: Notified mountd
+```
+
+No restart is needed, `ksmbd.adduser` tells the running daemon about the change ("Notified mountd"). However, the
+change is not instant. In my test, the old password was still accepted right after the command, and the new one was
+refused. A few seconds later, it was the other way round, as it should be.
+
+On the Windows side, a saved password stops working, and the login dialog appears again. The old entry can also be
+removed by hand with `cmdkey /delete:router` in a command prompt.
+
+### 3. Listing and deleting users
+
+The database is a small text file with one line per user, which starts with the user name:
+
+```shell
+root@router:~# cut -d: -f1 /etc/ksmbd/ksmbdpwd.db
+media
+```
+
+`-d` deletes a user, but only if no share requires it anymore. As long as the user is still listed in `users`, the
+command refuses, so the share has to be changed first:
+
+```shell
+root@router:~# ksmbd.adduser -d smbtest
+[ksmbd.adduser/12643]: ERROR: Share `downloads' requires user `smbtest'
+```
+
+After the deletion, a login with this user name is refused with "Access is denied" instead of "The user name or
+password is incorrect". The reason is `map to guest = Bad User`: an unknown user is treated as a guest, and the
+share does not allow guests.
+
+### 4. A different user name
+
+To use a different name than `media`, all three places must match: the Linux user, the `users` option of the share
+and the entry in the password database. Noticeably, ksmbd does not insist on the Linux user. My test user had no
+Linux account at all, and it could still log in and read the share. Writing, however, failed with "Access is denied".
+So the Linux user, with the ID `1000` as described above, is what makes the share writable.
 
 ## The firewall
 
