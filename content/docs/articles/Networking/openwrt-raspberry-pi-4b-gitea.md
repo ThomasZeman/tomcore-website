@@ -516,9 +516,6 @@ A few notes on this:
 - **Nothing changes for the internet.** The rules only apply to packets which came out of the tunnel, and only
   devices with a peer on the WireGuard server can send those.
 
-(Note: at the time of this writing, I have checked the rules and the name resolution on the router, but not yet a
-connection from the phone through the tunnel)
-
 ## Tests
 
 I ran these tests from an Ubuntu VM and from my Windows PC in the LAN, from inside the Gitea container, from the
