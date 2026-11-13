@@ -133,7 +133,9 @@ root@router:~# cat /etc/ksmbd/ksmbd.conf
   renamed the router from `OpenWrt` to `router`, as described in the
   [Essentials](openwrt-raspberry-pi-4b-essentials) article. ksmbd does not run a NetBIOS name service, so the name
   is only used inside the SMB protocol.
-- **`interfaces = br-lan`** comes from the option `interface`, which defaults to `lan`. ksmbd only serves the LAN.
+- **`interfaces = br-lan`** comes from the option `interface`, which defaults to `lan`. ksmbd only serves the LAN. For
+  the phone in the WireGuard tunnel, I added `wg0` later, as described in
+  [Access through WireGuard](#access-through-wireguard).
 - **`server signing = auto`** matters for current versions of Windows 11, which require signed SMB connections by
   default. ksmbd signs them when the client asks for it.
 - **Old protocol versions are off.** SMB 1 is only enabled with the option `allow_legacy_protocols`, which is off
@@ -217,12 +219,30 @@ are accepted, and port 445 is accepted only where the zone's input policy allows
 | `lan` | accept | Reachable, as intended |
 | `wan` | reject | Not reachable from the internet. Port 445 must never be open to the internet |
 | `torrent` | reject | Not reachable from the torrent client |
-| `docker` | accept | Reachable from containers on `docker0` |
+| `docker` | accept | Allowed by the firewall, but ksmbd does not listen there (see below) |
+| `vpn` | accept | Reachable from the WireGuard clients, once ksmbd listens on `wg0` (see below) |
 
 It is worth mentioning that `netstat` shows ksmbd listening on all addresses (`:::445`), despite
-`bind interfaces only`. So I do not rely on the ksmbd configuration alone, but on the firewall. The `docker` zone
-accepts input because it was set up that way by the Docker package. As long as I trust the containers on `docker0`,
-that is acceptable. Otherwise, a rule which rejects port 445 from the `docker` zone would close it.
+`bind interfaces only`. That is misleading. ksmbd starts one kernel thread per configured interface, and only
+accepts connections which arrive on one of them:
+
+```shell
+root@router:~# ps | grep "ksmbd-" | grep -v grep
+14317 root         0 SW   [ksmbd-br-lan]
+```
+
+I tested this from a container on `docker0`, whose zone accepts input. Port 53 of the router answered, port 445 did
+not:
+
+```shell
+root@router:~# docker run --rm --entrypoint sh gitea/gitea:28.3.0-rootless \
+  -c "nc -zv -w 3 10.0.0.1 445; nc -zv -w 3 10.0.0.1 53"
+10.0.0.1 (10.0.0.1:53) open
+```
+
+So there are two lines of defense: the interface list of ksmbd and the firewall. The `docker` zone accepts input
+because it was set up that way by the Docker package. If I ever add `docker0` to ksmbd, the containers can reach the
+share, and a rule which rejects port 445 from the `docker` zone would close it again.
 
 ## Connecting from Windows
 
@@ -240,6 +260,40 @@ Please note, the router does not show up under "Network" in the Explorer. Window
 add it, but typing the name once is enough for me.
 
 The test from Windows, including the transfer rate over Gigabit, is still outstanding and follows here.
+
+## Access through WireGuard
+
+When I am away from home, my phone reaches the LAN through the WireGuard server described in
+[OpenWrt on a Raspberry PI 4B: WireGuard Server](openwrt-raspberry-pi-4b-wireguard). I wanted to watch downloads in
+VLC from there as well. The firewall was not the problem, since the `vpn` zone accepts input to the router. But the
+connections from the phone arrive on the interface `wg0`, and ksmbd only listened on `br-lan`.
+
+The option `interface` takes a list of logical interfaces, separated by spaces:
+
+```shell
+root@router:~# uci set ksmbd.@globals[0].interface='lan wg0'
+root@router:~# uci commit ksmbd
+root@router:~# service ksmbd restart
+root@router:~# grep interfaces /etc/ksmbd/ksmbd.conf
+  interfaces = br-lan wg0
+root@router:~# ps | grep "ksmbd-" | grep -v grep
+14317 root         0 SW   [ksmbd-br-lan]
+14319 root         0 SW   [ksmbd-wg0]
+```
+
+The init script only lists interfaces which are up when ksmbd starts. However, it also registers a trigger for every
+interface in the list, so ksmbd is reloaded as soon as `wg0` comes up, for example during boot.
+
+In VLC on the phone, the share has to be added by hand as an SMB server, with `router.lan` as the server, `downloads`
+as the share and the user `media`. Two details are different from the LAN:
+
+- **The full name.** The phone uses the router as its DNS server through the tunnel, so `router.lan` resolves to
+  `10.0.0.1`. The short `router` does not, because the search domain `lan` only reaches devices which get their
+  address via DHCP. `10.0.0.1` works as well.
+- **No discovery.** The share does not show up under "Local Network" in VLC. Avahi announces it via mDNS, which is
+  multicast, and multicast does not cross the WireGuard tunnel.
+
+With this, VLC on the phone lists the downloads and plays them over the tunnel.
 
 ## Being found by other devices
 
@@ -394,6 +448,6 @@ touched by an upgrade at all. `owut` keeps the installed packages when it builds
 
 The download directory of the torrent client is available as `\\router\downloads` in the LAN, readable and
 writable for the user `media`. Since `media` has the same ID as the user qBittorrent runs as, files from both sides
-have the same owner. Avahi announces the share via mDNS, so VLC finds it by itself, and
-minidlna offers the videos as a DLNA media server for the TV. Next, I will test the share from Windows and measure
-what the PI manages over Gigabit.
+have the same owner. Through WireGuard, the phone reaches the same share as `router.lan`. Avahi announces the share
+via mDNS, so VLC in the LAN finds it by itself, and minidlna offers the videos as a DLNA media server for the TV.
+Next, I will test the share from Windows and measure what the PI manages over Gigabit.
