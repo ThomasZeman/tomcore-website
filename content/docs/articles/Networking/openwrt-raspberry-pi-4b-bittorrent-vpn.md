@@ -607,8 +607,8 @@ and the firewall zone keeps everything else in `10.0.200.0/24` closed to the LAN
 
 `http://10.0.0.1:8080` works, but a name is easier to remember. The name must point to the address the web interface
 is published on, which is the LAN address of the router, and not to gluetun's `10.0.200.2`. From the LAN, only the
-published address goes through Docker's DNAT and the rule `Allow-Torrent-WebUI`. The name is a static entry in
-dnsmasq:
+published address goes through Docker's DNAT and the rule `Allow-Torrent-WebUI`. Like `gitea.lan` in the
+[Gitea article](openwrt-raspberry-pi-4b-gitea), the name is a static entry in dnsmasq:
 
 ```shell
 root@OpenWrt:~# uci batch <<EOF

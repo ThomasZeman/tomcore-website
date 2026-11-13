@@ -1,7 +1,6 @@
 ---
 weight: 14
 title: "OpenWrt on a Raspberry PI 4B: Gitea"
-draft: true
 aiAssisted: true
 ---
 # OpenWrt on a Raspberry PI 4B: Gitea
@@ -16,10 +15,10 @@ a web interface, similar to GitHub, but small enough to run on a PI. I use it as
 and as the place where the virtual machines I run coding agents in push their work, without any of it leaving my
 LAN.
 
-It builds directly on [OpenWrt on a Raspberry PI 4B: Docker](openwrt-raspberry-pi-4b-docker) and uses the same
-network pattern as [OpenWrt on a Raspberry PI 4B: BitTorrent through a VPN](openwrt-raspberry-pi-4b-bittorrent-vpn):
-a Docker network of its own with a fixed bridge name, a fixed subnet and a strict firewall zone. If you haven't read
-those two articles yet, I strongly suggest doing so now. Before starting, I set myself three requirements:
+It builds directly on the Docker article of this series (coming soon) and uses the same network pattern as
+[OpenWrt on a Raspberry PI 4B: BitTorrent through a VPN](openwrt-raspberry-pi-4b-bittorrent-vpn): a Docker network
+of its own with a fixed bridge name, a fixed subnet and a strict firewall zone. If you haven't read that article
+yet, I strongly suggest doing so now. Before starting, I set myself three requirements:
 
 1. Gitea runs on the router and is reachable under a hostname in the LAN.
 2. It gets a Docker network and a subnet of its own, with no access to any other Docker network.
@@ -33,8 +32,8 @@ step at the end of the setup and needs nothing but two more firewall rules.
 Gitea is a single Go program, and with SQLite as its database it does not need a database container next to it. On
 my router, it uses about 96MB of memory after the start, out of the 512MB I allow it, and the whole directory with
 the configuration, the database and the first repository took 2.3MB of disk after the setup. With about 12GB free
-on `/opt`, there is room for a lot of repositories. Compared to [LibreChat](openwrt-raspberry-pi-4b-librechat) with
-its three containers, Gitea is very light.
+on `/opt`, there is room for a lot of repositories. Compared to LibreChat (article coming soon) with its
+three containers, Gitea is very light.
 
 ## How it fits together
 
@@ -549,12 +548,6 @@ broken test.
 
 ## Open points
 
-- **From the internet.** I checked this only by reading the rules, not with a connection from outside: there is no
-  accept rule from `wan` to `gitea` in fw4, `10.0.203.0/24` is a private network which the internet cannot route to,
-  the network has no IPv6, and nothing is published on the addresses of the router. A test from a phone on mobile
-  data against the public IPv4 and IPv6 address of the router is still to do.
-- **A reboot of the router.** `restart: unless-stopped` and the zone, which matches the bridge by its name, should
-  bring everything back. I have not observed it yet.
 - **Plain HTTP.** Passwords and session cookies travel unencrypted through the LAN, Git itself uses SSH. This is the
   same trade-off as with LibreChat, and a reverse proxy with HTTPS in front of both would be the fix.
 - **Backups.** Nothing backs up `/opt/gitea` yet. `config/app.ini` holds the secret keys of Gitea, and losing it

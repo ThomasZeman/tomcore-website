@@ -8,8 +8,9 @@ aiAssisted: true
 {{% hint info %}}
 **Work in progress, October 2026.** Built on OpenWrt 25.12.5 with kernel 6.12.94. This is the first part of a series
 and describes what is running today. [Dynamic DNS with AWS Route 53](openwrt-raspberry-pi-4b-ddns-route53),
-[WireGuard Server](openwrt-raspberry-pi-4b-wireguard) and
-[BitTorrent through a VPN](openwrt-raspberry-pi-4b-bittorrent-vpn) are available as well. The other parts, coming
+[WireGuard Server](openwrt-raspberry-pi-4b-wireguard),
+[BitTorrent through a VPN](openwrt-raspberry-pi-4b-bittorrent-vpn) and [Gitea](openwrt-raspberry-pi-4b-gitea) are
+available as well. The other parts, coming
 soon, cover Docker and the VLAN that exits in another country.
 {{% /hint %}}
 
@@ -761,12 +762,12 @@ a DNS name pointed at its current addresses is described in
 
 [WireGuard Server](openwrt-raspberry-pi-4b-wireguard) adds remote access into the LAN, and
 [BitTorrent through a VPN](openwrt-raspberry-pi-4b-bittorrent-vpn) a torrent client in Docker whose traffic can only
-leave through a commercial VPN.
+leave through a commercial VPN. [Gitea](openwrt-raspberry-pi-4b-gitea) adds a Git server with a web interface for the
+LAN.
 
 The other parts of this series are coming soon:
 
 - Docker: the installation, the firewall changes and a memory cap which makes
-  sure the containers cannot take away the memory the router needs. The first real container will be a Git server
-  with a web interface (Forgejo).
+  sure the containers cannot take away the memory the router needs.
 - The second Wi-Fi network on VLAN 2 whose traffic leaves through a WireGuard tunnel in another country, as
   described in the article A Wi-Fi Network in Another Country.
