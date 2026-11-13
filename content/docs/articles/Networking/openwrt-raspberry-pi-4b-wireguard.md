@@ -7,8 +7,9 @@ aiAssisted: true
 # OpenWrt on a Raspberry PI 4B: WireGuard Server
 
 {{% hint info %}}
-**Work in progress, October 2026.** Built on OpenWrt 25.12.5 with kernel 6.12.94 and wireguard-tools 1.0.20260223.
-This part of the series builds on the Essentials and the Dynamic DNS article and describes what is running today.
+**Work in progress, November 2026.** Built on OpenWrt 25.12.5 with kernel 6.12.94 and wireguard-tools 1.0.20260223.
+This part of the series builds on the Essentials and the Dynamic DNS article and describes what is running today. The
+tunnel is tested from a phone over IPv4. IPv6 inside the tunnel is configured, but not tested yet.
 {{% /hint %}}
 
 In [OpenWrt on a Raspberry PI 4B: Essentials](openwrt-raspberry-pi-4b-essentials) I described the router itself, its
@@ -195,9 +196,16 @@ A few notes on these fields, since some of them do not mean what their names sug
 - **Persistent Keep Alive** is not needed on the router either, but LuCI copies it into the client configuration,
   where it keeps the connection alive through the NAT of a mobile network.
 
-After **Save** in both dialogs and **Save & Apply** on the Interfaces page, the interface is up. Please note, changes
-to peers only take effect after the interface is restarted (**Restart** on `wg0`). "Save & Apply" alone is not
-enough.
+After **Save** in both dialogs and **Save & Apply** on the Interfaces page, the interface is up.
+
+**Warning!**
+
+**Changes to peers only take effect after the interface is restarted (Restart on `wg0`). "Save & Apply" alone is not
+enough. This applies in particular to new keys. The router keeps using the old key, and it silently ignores every
+handshake from a client which already has the new one.**
+
+I ran into exactly this. I generated a new key pair for the phone, imported it, and the phone kept sending handshakes
+which never got an answer. The section about troubleshooting below shows how to spot this on the router.
 
 ### On the command line
 
@@ -227,7 +235,8 @@ root@OpenWrt:~# uci commit network
 root@OpenWrt:~# service network reload
 ```
 
-The section type `wireguard_wg0` is what makes a section a peer of the interface `wg0`.
+The section type `wireguard_wg0` is what makes a section a peer of the interface `wg0`. Unlike changes to an
+existing peer, a new interface comes up with its peers on `service network reload`.
 
 ## Firewall
 
@@ -251,6 +260,12 @@ everything forwarded. In Network → Firewall → **General Settings**, **Edit**
 So the clients may reach the router, the LAN and the internet, but nothing can be forwarded into the tunnel from
 elsewhere. Input must be accepted, because the router is the DNS server of the clients. For IPv4, the `wan` zone
 already masquerades everything that leaves through it (IPv4 Masquerading), including the tunnel.
+
+Please note, `lan` and `wan` do not include the services which run in Docker networks with zones of their own. From
+the tunnel, those need rules of their own, which are optional and described in the respective articles:
+`Allow-Gitea-Web-VPN` and `Allow-Gitea-SSH-VPN` in the [Gitea article](openwrt-raspberry-pi-4b-gitea),
+`Allow-Torrent-WebUI-VPN` in the [BitTorrent article](openwrt-raspberry-pi-4b-bittorrent-vpn) and
+`Allow-Chat-WebUI-VPN` in the [LibreChat article](openwrt-raspberry-pi-4b-librechat).
 
 ### Opening the port
 
@@ -366,8 +381,23 @@ The QR code is a little hidden. It is not on the interface itself, but in the ed
 
 The button is greyed out if the router does not store the private key of the peer, as described above. It opens a
 dialog with the QR code and the configuration in plain text next to it. The configuration is built from the fields of
-the peer, so they must be filled in first, as described in the section about the first peer. These are the defaults
-the dialog fills in:
+the peer as they are shown in the dialog, so they must be filled in first, as described in the section about the
+first peer.
+
+It is worth mentioning that LuCI keeps changes which were saved in a dialog but not yet applied for each login
+session, and it shows them as if they were already in effect. They are not visible in `uci changes` on the command
+line either, since that one only shows the changes of the shell. In my case, an earlier attempt had left such a
+change behind: it deleted the peer `phone` and added a new peer which had nothing but a key pair. The peer list
+showed only the new peer, and the configuration generated from it had no `Address`, no `PresharedKey` and no
+`PersistentKeepAlive`. The WireGuard app then refused the tunnel with "at least one address must be specified". So
+before generating a configuration, I check two things:
+
+1. **Unsaved Changes** at the top right of LuCI shows no changes I do not know about. If it does, **Revert** throws
+   them away. "Save & Apply" would make them permanent.
+2. The peer is a saved one, and its Allowed IPs are filled in. **Add peer** followed by **Generate configuration…**
+   produces a configuration without any warning, but it lacks everything that was not entered before.
+
+These are the defaults the dialog fills in:
 
 | Field | Default |
 |---|---|
@@ -399,9 +429,104 @@ PersistentKeepAlive = 25
 
 The phone needs nothing else. In the WireGuard app, "Create from QR code" imports the whole configuration.
 
+Please note, the configuration contains the private key of the client and the preshared key, and anybody who has it
+can connect to my LAN, because the endpoint is public. I do not send it by email or paste it into a chat. If that
+happens anyway, **Generate new key pair** and **Generate preshared key** on the peer, followed by a restart of `wg0`,
+make the old configuration worthless.
+
+## More devices
+
+A peer is not a user account which several devices can share. It is exactly one device. On the router, a peer
+consists of three things:
+
+1. **A public key.** It identifies the device, since only the device which has the matching private key can complete
+   a handshake.
+2. **The Allowed IPs.** The tunnel addresses that belong to this key.
+3. **The endpoint.** The address and port the router last received a valid packet from with this key. There is only
+   one endpoint per peer, and the router sends everything for the peer's tunnel addresses there.
+
+If two devices imported the same configuration, they would have the same key and the same tunnel address. Every
+handshake moves the endpoint to the device which made it, so the router sends the replies to whichever device spoke
+last, and the other one receives nothing until it takes over again. At most one of them works at a time, and none of
+them works reliably. Apart from that, a single device could not be locked out without locking out the others.
+
+So every device gets a peer of its own, with its own keys and the next free addresses:
+
+| Peer | Allowed IPs |
+|---|---|
+| `phone` | `10.0.1.2/32`, `fd12:3456:789a:ff::2/128` |
+| `laptop` | `10.0.1.3/32`, `fd12:3456:789a:ff::3/128` |
+| `tablet` | `10.0.1.4/32`, `fd12:3456:789a:ff::4/128` |
+
+The interface, the port, the firewall zone and the NAT rules stay as they are, since they apply to the whole tunnel
+network and not to a single peer. A new device needs nothing but a new peer:
+
+1. Network → Interfaces, **Edit** on `wg0`, the **Peers** tab, **Add peer**. The fields are the same as for the
+   first peer, with a description of its own, **Generate new key pair**, **Generate preshared key** and the next free
+   Allowed IPs.
+2. **Save** in both dialogs, **Save & Apply**, then **Restart** on `wg0`.
+3. **Edit** on the new peer, **Generate configuration…**, and scan the QR code or download the file on the new device.
+
 ## Test
 
-The test from the phone over the mobile network is still outstanding and follows here.
+I tested the tunnel from the phone over the mobile network, with Wi-Fi switched off. After the restart of `wg0`
+described in the warning above, the router showed the handshake within seconds:
+
+```shell
+root@OpenWrt:~# wg show wg0
+interface: wg0
+  public key: (hidden)
+  private key: (hidden)
+  listening port: 51820
+
+peer: (hidden)
+  preshared key: (hidden)
+  endpoint: (hidden)
+  allowed ips: 10.0.1.2/32, fd12:3456:789a:ff::2/128
+  latest handshake: 1 minute, 32 seconds ago
+  transfer: 1.36 MiB received, 2.95 MiB sent
+  persistent keepalive: every 25 seconds
+```
+
+The phone connected to the IPv4 address of the router. In the connection tracking table of the router, I found
+about 100 IPv4 connections from `10.0.1.2` to the internet, all masqueraded to the WAN address, and 77 DNS queries
+to `10.0.0.1`. So the internet and the router's DNS work through the tunnel.
+
+Noticeably, the counter of the rule `Masquerade-VPN-IPv6` was still at 0 packets. The phone did not use IPv6 inside
+the tunnel at all. My interpretation is that this is the standard address selection of
+[RFC 6724](https://datatracker.ietf.org/doc/html/rfc6724): a ULA source address has a lower precedence than IPv4,
+so a client which has nothing but a ULA address in the tunnel prefers IPv4 for destinations in the internet. IPv6
+inside the tunnel, a connection to the IPv6 address of the router and the access to devices in the LAN are not
+tested yet.
+
+## Troubleshooting
+
+These are the cases I ran into, and how they show up on the router:
+
+| Symptom | Cause | What helps |
+|---|---|---|
+| The WireGuard app says "at least one address must be specified" | The configuration has no `Address`, because the peer had no Allowed IPs when it was generated | Fill in the Allowed IPs of a saved peer, check **Unsaved Changes**, generate the configuration again |
+| The counter of `Allow-WireGuard` stays at 0 | No packet reaches the router. The interface does not exist, the name resolves to an old address, or the client is not connected at all | `wg show wg0`, `nslookup home.example.com`, and the tunnel status in the app |
+| The counter of `Allow-WireGuard` goes up, but there is no `latest handshake` | The router does not know the key of the client, typically new keys without a restart of `wg0` | **Restart** on `wg0`, or `ifup wg0` |
+
+The counter is in the input chain of the WAN zone:
+
+```shell
+root@OpenWrt:~# nft list chain inet fw4 input_wan | grep Allow-WireGuard
+    udp dport 51820 counter packets 19 bytes 3344 accept comment "!fw4: Allow-WireGuard"
+```
+
+Whether the key the router uses is the one in the configuration can be checked as well. The first command prints
+the public key of the running interface's peer, the second the saved one. If they differ, the interface was not
+restarted after a change:
+
+```shell
+root@OpenWrt:~# wg show wg0 peers
+root@OpenWrt:~# uci get network.phone.public_key
+```
+
+(Note: a WireGuard app may show a tunnel as active even if not a single handshake succeeded. "Latest handshake" and
+the received data in the details of the tunnel are what count)
 
 ## Files to keep across upgrades
 
@@ -413,6 +538,8 @@ keys of the router and all peers.
 
 The router runs a WireGuard server on UDP port 51820 with its own firewall zone. Clients get an address from
 `10.0.1.0/24` and a ULA address, may reach the LAN and the internet, and are set up by scanning a QR code from the web
-interface. They connect to `home.example.com`, which the router keeps up to date in Route 53 itself. The next part
+interface, one peer per device. They connect to `home.example.com`, which the router keeps up to date in Route 53
+itself. The two pitfalls I ran into are LuCI's unsaved changes and peer changes which need a restart of `wg0`. The
+next part
 of the series is the second Wi-Fi network on VLAN 2 whose traffic leaves through a WireGuard tunnel in another
 country.

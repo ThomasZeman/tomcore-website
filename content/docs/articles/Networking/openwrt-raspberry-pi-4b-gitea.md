@@ -25,6 +25,9 @@ those two articles yet, I strongly suggest doing so now. Before starting, I set 
 2. It gets a Docker network and a subnet of its own, with no access to any other Docker network.
 3. It is reachable from the local LAN only. Nothing of it is reachable from the internet.
 
+Optionally, the devices connected to the WireGuard server of the router can reach it as well. This is a separate
+step at the end of the setup and needs nothing but two more firewall rules.
+
 ## Is the PI enough?
 
 Gitea is a single Go program, and with SQLite as its database it does not need a database container next to it. On
@@ -219,9 +222,9 @@ A few notes on this configuration:
   would fall back to the defaults of fw4, whose input policy is accept, and Gitea could reach SSH, LuCI and dnsmasq
   on the router through `10.0.203.1`. The zone rejects that. Gitea does not need any outgoing connection either. I
   use no mirrors, no mail, no update checks and no Gravatar, so there is no rule to `wan` at all.
-- **There is no rule for the WireGuard clients.** The requirement is LAN only. The `vpn` zone from the
-  [WireGuard article](openwrt-raspberry-pi-4b-wireguard) would need rules of its own, like `Allow-Chat-WebUI-VPN` in
-  the LibreChat article, if that ever changes.
+- **There is no rule for the WireGuard clients here.** The `vpn` zone from the
+  [WireGuard article](openwrt-raspberry-pi-4b-wireguard) needs rules of its own. They are optional and described in
+  the section about access through WireGuard below.
 
 The chains fw4 generates for the zone are short: just `jump reject_from_gitea` for input and `jump reject_to_gitea`
 for forward. In LuCI, the zone is in Network → Firewall → **General Settings**, and the two rules in **Traffic
@@ -453,6 +456,69 @@ git remote add origin git@gitea.lan:thomas/myproject.git
 git push -u origin main
 ```
 
+## Optional: access through WireGuard
+
+This step is optional. Without it, Gitea stays reachable from the LAN only, as set out in the requirements. I added
+it, because I want to look at my repositories from the phone and push from the laptop when I am away. Both connect
+through the WireGuard server described in
+[OpenWrt on a Raspberry PI 4B: WireGuard Server](openwrt-raspberry-pi-4b-wireguard).
+
+The name already works through the tunnel. The WireGuard clients use the router as their DNS server, so `gitea.lan`
+resolves to `10.0.203.2` there as well. But the connection itself is rejected: the zone `vpn` may only forward to
+`lan` and `wan`, and Gitea lives in the zone `gitea`. Two rules, the same as the ones for the LAN but with `vpn` as
+source, let the web interface and SSH through:
+
+```shell
+root@OpenWrt:~# uci batch <<EOF
+set firewall.gitea_web_vpn=rule
+set firewall.gitea_web_vpn.name='Allow-Gitea-Web-VPN'
+set firewall.gitea_web_vpn.src='vpn'
+set firewall.gitea_web_vpn.dest='gitea'
+set firewall.gitea_web_vpn.dest_ip='10.0.203.2'
+set firewall.gitea_web_vpn.proto='tcp'
+set firewall.gitea_web_vpn.dest_port='80'
+set firewall.gitea_web_vpn.target='ACCEPT'
+set firewall.gitea_ssh_vpn=rule
+set firewall.gitea_ssh_vpn.name='Allow-Gitea-SSH-VPN'
+set firewall.gitea_ssh_vpn.src='vpn'
+set firewall.gitea_ssh_vpn.dest='gitea'
+set firewall.gitea_ssh_vpn.dest_ip='10.0.203.2'
+set firewall.gitea_ssh_vpn.proto='tcp'
+set firewall.gitea_ssh_vpn.dest_port='22'
+set firewall.gitea_ssh_vpn.target='ACCEPT'
+EOF
+root@OpenWrt:~# uci commit firewall
+root@OpenWrt:~# service firewall restart
+```
+
+fw4 puts them in front of the reject at the end of the forward chain of the zone `vpn`:
+
+```shell
+root@OpenWrt:~# nft list chain inet fw4 forward_vpn
+table inet fw4 {
+  chain forward_vpn {
+    ip daddr 10.0.203.2 tcp dport 80 counter packets 0 bytes 0 jump accept_to_gitea comment "!fw4: Allow-Gitea-Web-VPN"
+    ip daddr 10.0.203.2 tcp dport 22 counter packets 0 bytes 0 jump accept_to_gitea comment "!fw4: Allow-Gitea-SSH-VPN"
+    ...
+    jump accept_to_lan comment "!fw4: Accept vpn to lan forwarding"
+    jump accept_to_wan comment "!fw4: Accept vpn to wan forwarding"
+    jump reject_to_vpn
+  }
+}
+```
+
+A few notes on this:
+
+- **Docker needs no change.** Its rules allow ports 80 and 22 of the container from any other interface, `wg0`
+  included. As before, it is fw4 which decides who gets through.
+- **The clients keep their tunnel address.** Gitea sees connections from `10.0.1.2` and so on, not from the router,
+  since nothing is masqueraded between the zones. The answers go back through the router into the tunnel.
+- **Nothing changes for the internet.** The rules only apply to packets which came out of the tunnel, and only
+  devices with a peer on the WireGuard server can send those.
+
+(Note: at the time of this writing, I have checked the rules and the name resolution on the router, but not yet a
+connection from the phone through the tunnel)
+
 ## Tests
 
 I ran these tests from an Ubuntu VM and from my Windows PC in the LAN, from inside the Gitea container, from the
@@ -501,14 +567,15 @@ broken test.
 
 ## Files to keep across upgrades
 
-Nothing to add to `/etc/sysupgrade.conf`. The zone, its two rules and the hostname are part of the uci
-configuration. Everything else is under `/opt/gitea` on the data partition, which a firmware upgrade does not touch.
-Keep in mind that the uci backup does not contain this directory either.
+Nothing to add to `/etc/sysupgrade.conf`. The zone, its two rules, the two optional rules for WireGuard and the
+hostname are part of the uci configuration. Everything else is under `/opt/gitea` on the data partition, which a
+firmware upgrade does not touch. Keep in mind that the uci backup does not contain this directory either.
 
 ## Summary and next steps
 
 Gitea runs in a Docker network of its own, `br-gitea`, and the LAN reaches it directly on its own address under the
 name `gitea.lan`, with the standard ports 80 and 22. Docker's routed mode makes this possible without NAT and without
 publishing anything on the router, and the firewall zone `gitea` lets in nothing but these two ports from the LAN and
-lets nothing out. With less than 100MB of memory, the PI hardly notices it. The next steps are a nightly backup and,
+lets nothing out. Optionally, two more rules open the same two ports to the WireGuard clients. With less than 100MB
+of memory, the PI hardly notices it. The next steps are a nightly backup and,
 later, a runner for Gitea Actions on a network of its own.

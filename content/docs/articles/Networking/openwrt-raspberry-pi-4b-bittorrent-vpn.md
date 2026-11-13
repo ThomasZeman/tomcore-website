@@ -604,6 +604,86 @@ The connections from the LAN never reach it, because the DNAT rule has already r
 mentioning that the web interface is only published on the LAN address. Nothing is published on the WAN address,
 and the firewall zone keeps everything else in `10.0.200.0/24` closed to the LAN.
 
+## A hostname, and access through WireGuard
+
+### 1. A hostname for the web interface
+
+`http://10.0.0.1:8080` works, but a name is easier to remember. The name must point to the address the web interface
+is published on, which is the LAN address of the router, and not to gluetun's `10.0.200.2`. From the LAN, only the
+published address goes through Docker's DNAT and the rule `Allow-Torrent-WebUI`. Like `gitea.lan` in the
+[Gitea article](openwrt-raspberry-pi-4b-gitea), the name is a static entry in dnsmasq:
+
+```shell
+root@OpenWrt:~# uci batch <<EOF
+set dhcp.torrent=domain
+set dhcp.torrent.name='torrent'
+set dhcp.torrent.ip='10.0.0.1'
+EOF
+root@OpenWrt:~# uci commit dhcp
+root@OpenWrt:~# service dnsmasq reload
+root@OpenWrt:~# nslookup torrent.lan 127.0.0.1
+Server:    127.0.0.1
+Address:  127.0.0.1:53
+
+Name:  torrent.lan
+Address: 10.0.0.1
+```
+
+dnsmasq appends the local domain `lan` itself, so the web interface is now at `http://torrent.lan:8080`. In LuCI, the
+entry is in Network → DHCP and DNS → **Hostnames**. The same name works from the WireGuard clients, since they use
+the router as their DNS server as well. I asked the router on its tunnel address `10.0.1.1`, which is where the
+phone sends its queries, and got the same answer.
+
+A few notes on this:
+
+- **The port stays in the URL.** A DNS name only points to an address, not to a port. Without `:8080`, the browser
+  connects to port 80 of the router, which is LuCI. Getting rid of the port would need a reverse proxy on port 80
+  which distinguishes the names, and that is not part of this article.
+- **qBittorrent accepts the new name.** qBittorrent can check the name in the `Host` header of each request. On my
+  installation, the list of allowed names is `*` (`WebUI\ServerDomains=*` in `qBittorrent.conf`), so any name
+  works. If a name is rejected, Tools → Options → **Web UI** → "Server domains" is the place to look.
+
+### 2. Optional: access from the WireGuard clients
+
+This step is optional. Without it, the web interface stays reachable from the LAN only. I added it, because I want
+to check the downloads from the phone when I am away, through the WireGuard server described in
+[OpenWrt on a Raspberry PI 4B: WireGuard Server](openwrt-raspberry-pi-4b-wireguard).
+
+The name resolves through the tunnel, but the connection does not work yet. Docker's DNAT rule matches every
+incoming interface except `br-torrent`, so it also rewrites a connection from the tunnel to `10.0.0.1:8080`. After
+that, the firewall sees a connection from the zone `vpn` to the zone `torrent`, and `vpn` may only forward to `lan`
+and `wan`. One rule, the same as `Allow-Torrent-WebUI` but with `vpn` as source, lets it through:
+
+```shell
+root@OpenWrt:~# uci batch <<EOF
+set firewall.torrent_ui_vpn=rule
+set firewall.torrent_ui_vpn.name='Allow-Torrent-WebUI-VPN'
+set firewall.torrent_ui_vpn.src='vpn'
+set firewall.torrent_ui_vpn.dest='torrent'
+set firewall.torrent_ui_vpn.dest_ip='10.0.200.2'
+set firewall.torrent_ui_vpn.proto='tcp'
+set firewall.torrent_ui_vpn.dest_port='8080'
+set firewall.torrent_ui_vpn.target='ACCEPT'
+EOF
+root@OpenWrt:~# uci commit firewall
+root@OpenWrt:~# service firewall restart
+root@OpenWrt:~# nft list chain inet fw4 forward_vpn | grep Torrent
+    ip daddr 10.0.200.2 tcp dport 8080 counter packets 0 bytes 0 jump accept_to_torrent comment "!fw4: Allow-Torrent-WebUI-VPN"
+```
+
+Like the rule for the LAN, it allows exactly one port on gluetun's address and nothing else in `10.0.200.0/24`.
+Docker's own accept rule matches every incoming interface except `br-torrent` as well, so Docker needs no change.
+From the phone, the web interface is at the same address as from the LAN, `http://torrent.lan:8080`.
+
+I opened `http://torrent.lan:8080` on the phone over the mobile network, with Wi-Fi switched off, and got the web
+interface. The counter of the rule on the router went up with it, which shows that the connection really came
+through the tunnel:
+
+```shell
+root@OpenWrt:~# nft list chain inet fw4 forward_vpn | grep Torrent
+    ip daddr 10.0.200.2 tcp dport 8080 counter packets 3 bytes 180 jump accept_to_torrent comment "!fw4: Allow-Torrent-WebUI-VPN"
+```
+
 ## Tests
 
 gluetun and the kill switch on the router were already tested while starting it. None of these tests have been run
@@ -616,6 +696,7 @@ yet. With both containers running, the plan is:
 | A torrent IP check, such as the one on [ipleak.net](https://ipleak.net/) | Only the Proton address, no IPv6 address |
 | `docker-compose restart` | qBittorrent gets the current port without my help |
 | Open `http://10.0.0.1:8080` from the PC, and from the WAN side | Works from the LAN, nothing from the WAN |
+| Open `http://torrent.lan:8080` from the PC | The web interface |
 
 The first test is the counterpart of the kill switch test with gluetun. It shows that qBittorrent really uses the
 network of gluetun and has no other way to the internet.
@@ -634,15 +715,17 @@ network of gluetun and has no other way to the internet.
 
 ## Files to keep across upgrades
 
-Nothing to add to `/etc/sysupgrade.conf`. The firewall zone and its two rules are part of the uci configuration,
-and `owut` keeps the package `kmod-tun`. Everything else, including the private key in `.env`, is under
-`/opt/torrent` on the data partition, which a firmware upgrade does not touch. Keep in mind that the uci backup does
-not contain it either, so `/opt/torrent/.env` and the compose file need a backup of their own.
+Nothing to add to `/etc/sysupgrade.conf`. The firewall zone and its two rules, the optional rule for WireGuard and
+the hostname are part of the uci configuration, and `owut` keeps the package `kmod-tun`. Everything else,
+including the private key in `.env`, is under `/opt/torrent` on the data partition, which a firmware upgrade does
+not touch. Keep in mind that the uci backup does not contain it either, so `/opt/torrent/.env` and the compose file
+need a backup of their own.
 
 ## Summary and next steps
 
 The plan is two containers on a Docker network of their own: gluetun keeps a WireGuard tunnel to a ProtonVPN P2P
 server with port forwarding, and qBittorrent shares its network, so it can reach the internet only through that
 tunnel. The router enforces this with a firewall zone which lets nothing but WireGuard out to the internet. The web
-interface is only published on the LAN address of the router. Once the tests above have passed, I will replace this
+interface is only published on the LAN address of the router, under the name `torrent.lan`, and optionally one more
+rule makes it reachable for the WireGuard clients. Once the tests above have passed, I will replace this
 plan with what is actually running.
