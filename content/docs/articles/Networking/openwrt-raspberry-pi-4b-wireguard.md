@@ -263,7 +263,7 @@ Please note, `lan` and `wan` do not include the services which run in Docker net
 the tunnel, those need rules of their own, which are optional and described in the respective articles:
 `Allow-Torrent-WebUI-VPN` in the [BitTorrent article](openwrt-raspberry-pi-4b-bittorrent-vpn),
 `Allow-Gitea-Web-VPN` and `Allow-Gitea-SSH-VPN` in the [Gitea article](openwrt-raspberry-pi-4b-gitea), and
-`Allow-Chat-WebUI-VPN` in the article about LibreChat (coming soon).
+`Allow-Chat-WebUI-VPN` in the [article about LibreChat](openwrt-raspberry-pi-4b-librechat).
 
 ### Opening the port
 

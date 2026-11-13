@@ -7,7 +7,7 @@ aiAssisted: true
 
 {{% hint info %}}
 **Set up and tested in November 2026** on OpenWrt 25.12.5 with Docker 29.6.1. This part of the series builds on the
-Essentials and the Docker article (coming soon).
+Essentials and the [Docker article](openwrt-raspberry-pi-4b-docker).
 {{% /hint %}}
 
 This part of the series adds a BitTorrent client to the router whose traffic can only reach the internet through a
@@ -15,9 +15,9 @@ commercial VPN. If the tunnel goes down, the client must not fall back to my hom
 internet access entirely. No device in the LAN needs to be on all the time for this, and the downloads end up on the
 SSD of the router.
 
-It builds directly on the Docker article of this series (coming soon). Three things from it are important here:
-all Docker data lives on the SSD under `/opt`, containers can reach the internet but not the LAN, and all
-containers together are capped at 6GB of memory so that routing always has memory left.
+It builds directly on the [Docker article](openwrt-raspberry-pi-4b-docker) of this series. Three things from it are
+important here: all Docker data lives on the SSD under `/opt`, containers can reach the internet but not the LAN,
+and all containers together are capped at 6GB of memory so that routing always has memory left.
 
 (Note: I use BitTorrent for legal content, such as Linux images. Neither tomcore.io nor the author of this article
 can be held liable for how you use the setup described here, or for any damage it may cause)
@@ -56,7 +56,7 @@ only the Proton specific parts change)
 
 The obvious OpenWrt way would be a second WireGuard interface on the router, with policy routing that sends the
 traffic of the torrent client into it, and a firewall zone that can only forward to the tunnel. This is close to
-what the article A Wi-Fi Network in Another Country (coming soon) plans for VLAN 2. For a single
+what the article [A Wi-Fi Network in Another Country](wifi-network-in-another-country) plans for VLAN 2. For a single
 Docker container, I decided against it for three reasons:
 
 - Docker manages its own firewall rules next to fw4, as described in the Docker article. Routing a Docker network

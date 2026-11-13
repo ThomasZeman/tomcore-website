@@ -1,7 +1,6 @@
 ---
 weight: 10
 title: A Wi-Fi Network in Another Country
-draft: true
 ---
 # A Wi-Fi Network in Another Country
 

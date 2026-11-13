@@ -1,7 +1,6 @@
 ---
 weight: 7
 title: "OpenWrt on a Raspberry PI 4B: Docker"
-draft: true
 aiAssisted: true
 ---
 # OpenWrt on a Raspberry PI 4B: Docker

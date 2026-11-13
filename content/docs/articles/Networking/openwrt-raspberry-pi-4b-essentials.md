@@ -9,8 +9,11 @@ aiAssisted: true
 **Work in progress, October 2026.** Built on OpenWrt 25.12.5 with kernel 6.12.94. This is the first part of a series
 and describes what is running today. [Dynamic DNS with AWS Route 53](openwrt-raspberry-pi-4b-ddns-route53),
 [WireGuard Server](openwrt-raspberry-pi-4b-wireguard),
-[BitTorrent through a VPN](openwrt-raspberry-pi-4b-bittorrent-vpn) and [Gitea](openwrt-raspberry-pi-4b-gitea) are
-available as well. The other parts, coming soon, cover Docker and the VLAN that exits in another country.
+[Docker](openwrt-raspberry-pi-4b-docker), [BitTorrent through a VPN](openwrt-raspberry-pi-4b-bittorrent-vpn),
+[A Windows File Share with ksmbd](openwrt-raspberry-pi-4b-file-share-ksmbd),
+[LibreChat](openwrt-raspberry-pi-4b-librechat) and [Gitea](openwrt-raspberry-pi-4b-gitea) are available as well.
+[Network Architecture](openwrt-raspberry-pi-4b-network-architecture) shows how they fit together. The VLAN that
+exits in another country is described in [A Wi-Fi Network in Another Country](wifi-network-in-another-country).
 {{% /hint %}}
 
 For a few years my Raspberry PI ran Alpine Linux as a home router. I configured the network interfaces, nftables and
@@ -26,7 +29,7 @@ adapter for that.
 This article describes the foundation: the hardware, the installation including the first security steps, how IPv6
 works on this router, the quirks of the USB network adapter, and moving the system from the SD card to an SSD.
 Docker comes up wherever it influenced these decisions, but the installation itself, including how I keep a runaway
-container from taking the router down, is described in a separate article about Docker (coming soon).
+container from taking the router down, is described in a separate [article about Docker](openwrt-raspberry-pi-4b-docker).
 
 ## Hardware
 
@@ -151,7 +154,7 @@ survive upgrades without an entry in `sysupgrade.conf`, and they are part of the
 
 (Note: this protects the router against everybody in the LAN. Keeping the internet out is the job of the firewall,
 as described in the IPv6 section. What is still open is a Docker container reaching the web interface, which I
-take care of in the Docker article, coming soon)
+take care of in the [Docker article](openwrt-raspberry-pi-4b-docker))
 
 ### LAN and WAN
 
@@ -713,7 +716,7 @@ root=PARTUUID=e875e867-02
 
 The SSD has 250GB, and the image uses about 1.1GB of it. I left a gap of about 3GB after the root partition in case
 I need to grow it later, and gave the rest to a data partition mounted at `/opt`. This is where Docker will keep its
-images and containers, as described in the Docker article (coming soon):
+images and containers, as described in the [Docker article](openwrt-raspberry-pi-4b-docker):
 
 {{< mermaid >}}
 flowchart LR
@@ -743,7 +746,7 @@ because OpenWrt's Docker package already uses `/opt/docker/` as its default data
 
 The data partition can also hold a swap file. I preferred that over a swap partition in the free space, because
 a new partition means another change to the partition table, and the reboot below shows what that can do. The
-Docker article (coming soon) explains why I added one.
+[Docker article](openwrt-raspberry-pi-4b-docker) explains why I added one.
 
 Then I rebooted, and the PI did not come back. The screen showed:
 
@@ -826,9 +829,12 @@ a DNS name pointed at its current addresses is described in
 leave through a commercial VPN. [Gitea](openwrt-raspberry-pi-4b-gitea) adds a Git server with a web interface for the
 LAN.
 
-The other parts of this series are coming soon:
+The other parts of this series:
 
-- Docker: the installation, the firewall changes and a memory cap which makes
+- [Docker](openwrt-raspberry-pi-4b-docker): the installation, the firewall changes and a memory cap which makes
   sure the containers cannot take away the memory the router needs.
+- [A Windows File Share with ksmbd](openwrt-raspberry-pi-4b-file-share-ksmbd) and
+  [LibreChat](openwrt-raspberry-pi-4b-librechat).
+- [Network Architecture](openwrt-raspberry-pi-4b-network-architecture): all networks, zones and names in one place.
 - The second Wi-Fi network on VLAN 2 whose traffic leaves through a WireGuard tunnel in another country, as
-  described in the article A Wi-Fi Network in Another Country.
+  described in the article [A Wi-Fi Network in Another Country](wifi-network-in-another-country).

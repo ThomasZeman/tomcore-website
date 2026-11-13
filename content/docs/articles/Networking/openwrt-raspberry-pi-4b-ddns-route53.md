@@ -666,8 +666,8 @@ these side effects.
 There are two other ways I considered but did not choose:
 
 - A container such as [ddns-route53](https://crazymax.dev/ddns-route53/) on the
-  Docker installation (article coming soon). It works, but a whole container for a job a 100-line shell
-  script can do is too much in my opinion.
+  Docker installation ([article](openwrt-raspberry-pi-4b-docker)). It works, but a whole container for a job a
+  100-line shell script can do is too much in my opinion.
 - An [AWS Lambda](https://aws.amazon.com/lambda/) function behind a function URL, called by ddns-scripts with a
   custom update URL. This keeps the AWS keys off the router, but it means writing and maintaining code in AWS.
 

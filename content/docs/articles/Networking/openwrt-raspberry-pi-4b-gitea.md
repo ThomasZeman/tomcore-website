@@ -15,7 +15,8 @@ a web interface, similar to GitHub, but small enough to run on a PI. I use it as
 and as the place where the virtual machines I run coding agents in push their work, without any of it leaving my
 LAN.
 
-It builds directly on the Docker article of this series (coming soon) and uses the same network pattern as
+It builds directly on the [Docker article](openwrt-raspberry-pi-4b-docker) of this series and uses the same
+network pattern as
 [OpenWrt on a Raspberry PI 4B: BitTorrent through a VPN](openwrt-raspberry-pi-4b-bittorrent-vpn): a Docker network
 of its own with a fixed bridge name, a fixed subnet and a strict firewall zone. If you haven't read that article
 yet, I strongly suggest doing so now. Before starting, I set myself three requirements:
@@ -32,7 +33,7 @@ step at the end of the setup and needs nothing but two more firewall rules.
 Gitea is a single Go program, and with SQLite as its database it does not need a database container next to it. On
 my router, it uses about 96MB of memory after the start, out of the 512MB I allow it, and the whole directory with
 the configuration, the database and the first repository took 2.3MB of disk after the setup. With about 12GB free
-on `/opt`, there is room for a lot of repositories. Compared to LibreChat (article coming soon) with its
+on `/opt`, there is room for a lot of repositories. Compared to [LibreChat](openwrt-raspberry-pi-4b-librechat) with its
 three containers, Gitea is very light.
 
 ## How it fits together
