@@ -10,8 +10,7 @@ aiAssisted: true
 and describes what is running today. [Dynamic DNS with AWS Route 53](openwrt-raspberry-pi-4b-ddns-route53),
 [WireGuard Server](openwrt-raspberry-pi-4b-wireguard),
 [BitTorrent through a VPN](openwrt-raspberry-pi-4b-bittorrent-vpn) and [Gitea](openwrt-raspberry-pi-4b-gitea) are
-available as well. The other parts, coming
-soon, cover Docker and the VLAN that exits in another country.
+available as well. The other parts, coming soon, cover Docker and the VLAN that exits in another country.
 {{% /hint %}}
 
 For a few years my Raspberry PI ran Alpine Linux as a home router. I configured the network interfaces, nftables and
@@ -25,9 +24,9 @@ with a web interface, will run in Docker on the same box. I did not want to run 
 adapter for that.
 
 This article describes the foundation: the hardware, the installation including the first security steps, how IPv6
-works on this router, the quirks of the USB network adapter, and moving the system from the SD card to an SSD. Docker comes up wherever it influenced
-these decisions, but the installation itself, including how I keep a runaway container from taking the router down,
-is described in a separate article about Docker (coming soon).
+works on this router, the quirks of the USB network adapter, and moving the system from the SD card to an SSD.
+Docker comes up wherever it influenced these decisions, but the installation itself, including how I keep a runaway
+container from taking the router down, is described in a separate article about Docker (coming soon).
 
 ## Hardware
 
@@ -181,6 +180,67 @@ network.wan6.reqaddress='try'
 network.wan6.reqprefix='auto'
 ```
 
+### Optional: renaming the router
+
+Out of the box, the router is called `OpenWrt`. The name is more than a label in the web interface, because several
+services derive their own names from it:
+
+| Where | Name |
+|---|---|
+| The local DNS server (dnsmasq) | `openwrt` and `openwrt.lan` resolve to the LAN addresses of the router |
+| The SMB server ksmbd | `netbios name = OpenWrt` in the generated configuration |
+| The mDNS daemon Avahi | `OpenWrt.local` |
+| The shell prompt and the title of the web interface | `root@OpenWrt` |
+
+Since I address the router by name more and more, for example for the file share, I renamed it to `router`. The
+name is set in System → System → Hostname, or in uci:
+
+```shell
+root@OpenWrt:~# uci set system.@system[0].hostname='router'
+root@OpenWrt:~# uci commit system
+root@OpenWrt:~# service system reload
+root@OpenWrt:~# service dnsmasq restart
+udhcpc: started, v1.37.0
+udhcpc: broadcasting discover
+udhcpc: no lease, failing
+```
+
+(Note: the `udhcpc` lines are not an error. Before it starts, dnsmasq checks whether another DHCP server answers in
+the LAN, and "no lease" means that there is none)
+
+`service system reload` changes the kernel host name right away, no reboot is needed. dnsmasq only reads the name
+when it starts, hence the restart. The new name resolves immediately, the old one is gone:
+
+```shell
+root@router:~# nslookup router.lan 127.0.0.1
+...
+Name:   router.lan
+Address: 10.0.0.1
+
+Name:   router.lan
+Address: fd12:3456:789a::1
+root@router:~# nslookup openwrt.lan 127.0.0.1
+...
+** server can't find openwrt.lan: NXDOMAIN
+```
+
+The domain `lan` comes from `dhcp.@dnsmasq[0].domain`, and dnsmasq hands it to the devices in the LAN as their
+search domain. That is why a Windows PC resolves the plain `router` as well. Services which read the name only at
+their start, such as ksmbd and Avahi, need a restart, if they are installed:
+
+```shell
+root@router:~# service ksmbd restart
+root@router:~# service avahi-daemon restart
+```
+
+It is worth mentioning that a few settings contain the string `OpenWrt` but are independent of the host name, and I
+left them as they are: the Wi-Fi SSID (the Wi-Fi of the PI is not in use), the common name of the self-signed
+certificate of the web interface in `/etc/config/uhttpd` (only used when a new certificate is generated) and the
+description of the SMB server. The host name is part of the uci configuration and therefore kept across upgrades.
+
+Please note, I renamed the router after most of this series was written, so the prompts in the console output still
+show `root@OpenWrt` in most places.
+
 ## IPv6
 
 My provider delivers [IPv6](https://en.wikipedia.org/wiki/IPv6) natively on the HFC connection, so the router runs
@@ -191,7 +251,8 @@ wanted to understand what the defaults do before I touch the firewall or add VLA
 
 (Note: throughout this article, I replaced my real prefix with the
 [documentation prefix](https://en.wikipedia.org/wiki/IPv6_address#Documentation) `2001:db8::/32` and made up the
-rest of the global addresses, the ULA prefix and the provider's link-local address. The structure of the output is unchanged)
+rest of the global addresses, the ULA prefix and the provider's link-local address. The structure of the output is
+unchanged)
 
 ### What the provider hands out
 
@@ -681,8 +742,8 @@ root@OpenWrt:~# /etc/init.d/fstab enable
 because OpenWrt's Docker package already uses `/opt/docker/` as its default data directory.
 
 The data partition can also hold a swap file. I preferred that over a swap partition in the free space, because
-a new partition means another change to the partition table, and the reboot below shows what that can do. The Docker article
-(coming soon) explains why I added one.
+a new partition means another change to the partition table, and the reboot below shows what that can do. The
+Docker article (coming soon) explains why I added one.
 
 Then I rebooted, and the PI did not come back. The screen showed:
 
