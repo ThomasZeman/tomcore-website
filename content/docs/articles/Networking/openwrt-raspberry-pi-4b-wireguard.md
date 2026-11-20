@@ -186,6 +186,8 @@ A few notes on these fields, since some of them do not mean what their names sug
   inside the tunnel, a /32 and a /128 per peer. LuCI also copies them into the client configuration as the phone's
   own addresses, so they must be filled in before the configuration is generated. Otherwise, the configuration has
   no address, and the WireGuard app refuses to start the tunnel with "at least one address must be specified".
+  Which addresses the phone sends into the tunnel is decided by a second, separate list of Allowed IPs in the
+  phone's profile, which the dialog **Generate configuration…** fills in further below.
 - **Route Allowed IPs** is not needed, since the addresses are already part of the tunnel network.
 - **Endpoint Host and Endpoint Port** are where the router would find the peer. The router does not know in advance
   where the phone will connect from, and WireGuard learns it from the first handshake. So both stay empty, in
@@ -403,7 +405,7 @@ These are the defaults the dialog fills in:
 | Field | Default |
 |---|---|
 | Connection endpoint | A list to choose from: the hostnames of enabled DDNS services, the router's hostname if it contains a dot, then the WAN IPv4 and IPv6 addresses |
-| Allowed IPs | `0.0.0.0/0` and `::/0`, so all traffic goes through the tunnel |
+| Allowed IPs | `0.0.0.0/0` and `::/0`, so all traffic goes through the tunnel. This is the list in the phone's profile, not the one of the peer on the router |
 | DNS Servers | The LAN address of the router, `10.0.0.1` |
 | Addresses | The `allowed_ips` of the peer |
 
@@ -481,10 +483,22 @@ the configuration below have not been run on my router so far)
 
 ### Which traffic enters the tunnel
 
-WireGuard decides on the client which traffic goes into the tunnel, with `AllowedIPs` in the `[Peer]` section of the
-client configuration. On the client, these are the destinations that are routed into the tunnel, which is not the
-same as the Allowed IPs of the peer on the router, as described in the section about the first peer. So the router
-needs nothing for the split behaviour itself. The LAN only profile differs from the full tunnel in a single line:
+The setting which decides this is called Allowed IPs, and it appears twice, once on each end of the tunnel. This is
+easy to mix up, so in this section I always say which of the two I mean. Each end has its own list of Allowed IPs for
+the other end, and the list answers one question: which addresses belong to the other end?
+
+| | Allowed IPs of the peer on the router | Allowed IPs in the phone's profile |
+|---|---|---|
+| Where | LuCI, the peer in the **Peers** tab of `wg0` | The `[Peer]` section of the client configuration |
+| Answers | Which addresses belong to this phone? | Which addresses are reachable through the router? |
+| Full tunnel | `10.0.1.2/32`, `fd12:3456:789a:ff::2/128` | `0.0.0.0/0`, `::/0` |
+| LAN only | `10.0.1.3/32`, `fd12:3456:789a:ff::3/128` | `10.0.0.0/16`, `fd12:3456:789a::/48` |
+
+On each end, the list does two jobs. Packets to these addresses are sent into the tunnel, to this peer, and packets
+from this peer are only accepted if their source address is on the list. So the router sends everything for
+`10.0.1.3` to the phone and only accepts `10.0.1.3` from it, while the phone sends everything for the home network
+into the tunnel. The Allowed IPs of the peer on the router are always only the phone's own tunnel address. The split
+itself happens entirely in the Allowed IPs in the phone's profile, which differ from the full tunnel in a single line:
 
 ```text
 AllowedIPs = 10.0.0.0/16, fd12:3456:789a::/48
@@ -498,9 +512,9 @@ the provider can hand out a different prefix after a reconnect, and the client c
 
 ### DNS
 
-The LAN only profile keeps `DNS = 10.0.0.1`. Since `10.0.0.1` is inside the Allowed IPs, Android sends all DNS queries
-through the tunnel to dnsmasq on the router. Names in the LAN, such as `chat.lan` or `gitea.lan`, are answered
-locally, and all other names are forwarded upstream by the router as usual. Only the small DNS packets use the
+The LAN only profile keeps `DNS = 10.0.0.1`. Since `10.0.0.1` is inside the Allowed IPs in the phone's profile,
+Android sends all DNS queries through the tunnel to dnsmasq on the router. Names in the LAN, such as `chat.lan` or
+`gitea.lan`, are answered locally, and all other names are forwarded upstream by the router as usual. Only the small DNS packets use the
 tunnel, the actual internet traffic does not.
 
 It is worth mentioning that real split DNS, where only `.lan` names go to the router and everything else to the DNS
@@ -526,8 +540,8 @@ up:
    `AllowedIPs` differ. Nothing changes on the router. The disadvantage is that the WireGuard app on Android has no
    button to duplicate a tunnel, so the private key would have to be copied into the second profile by hand.
 2. **A second peer on the router.** The second profile gets its own keys and its own tunnel address. This costs one
-   more peer, but `wg show wg0` then shows which of the two profiles is in use, by the allowed ips of the peer with
-   the latest handshake.
+   more peer, but `wg show wg0` then shows which of the two profiles is in use: the one whose peer on the router
+   has the latest handshake.
 
 I chose the second way. It does not contradict what I wrote about more devices above: two peers on one device are
 fine, since the device never uses both at the same time, and each of them still has exactly one endpoint. The new
@@ -543,11 +557,14 @@ peer gets the next free addresses:
 The peer is created exactly like the first one:
 
 1. Network → Interfaces, **Edit** on `wg0`, the **Peers** tab, **Add peer**. Description `phone-lan`, **Generate new
-   key pair**, **Generate preshared key**, Allowed IPs `10.0.1.3/32` and `fd12:3456:789a:ff::3/128`. Route Allowed
-   IPs stays off, the endpoint stays empty, and Persistent Keep Alive is `25`, as for the first peer.
+   key pair**, **Generate preshared key**. The field Allowed IPs here is the list of the peer on the router, so it
+   gets only the phone's own tunnel addresses, `10.0.1.3/32` and `fd12:3456:789a:ff::3/128`. Route Allowed IPs stays
+   off, the endpoint stays empty, and Persistent Keep Alive is `25`, as for the first peer.
 2. **Save** in both dialogs, **Save & Apply**, then **Restart** on `wg0`.
-3. **Edit** on the new peer, **Generate configuration…**. In the dialog, I replace the default Allowed IPs `0.0.0.0/0`
-   and `::/0` with `10.0.0.0/16` and `fd12:3456:789a::/48`, and leave the DNS server and the endpoint as they are.
+3. **Edit** on the new peer, **Generate configuration…**. This dialog is on the router, but everything in it ends up
+   in the phone's profile. Its field Allowed IPs is therefore the list in the phone's profile, and I replace the
+   default `0.0.0.0/0` and `::/0` with `10.0.0.0/16` and `fd12:3456:789a::/48`. The DNS server and the endpoint stay
+   as they are.
 
 Please note, the restart of `wg0` interrupts the tunnel of the first peer for a moment as well. On the command line,
 the same peer looks like this. `ifup wg0` restarts the interface, so the new peer takes effect:
@@ -595,7 +612,7 @@ PersistentKeepAlive = 25
 
 In the WireGuard app, "Create from QR code" adds it as a second tunnel next to the first one. Switching one of them
 on switches the other one off. If the dialog does not take the changed Allowed IPs over, they can also be edited in
-the app after the import.
+the app after the import, in the peer section of the tunnel.
 
 ## Test
 
