@@ -8,7 +8,7 @@ aiAssisted: true
 {{% hint info %}}
 **Set up and tested in November 2026** on OpenWrt 25.12.5 with kernel 6.12.94 and wireguard-tools 1.0.20260223. This
 part of the series builds on the Essentials and the Dynamic DNS article. The second, LAN only profile for the phone
-is planned and not set up yet.
+was added and tested later in November 2026.
 {{% /hint %}}
 
 In [OpenWrt on a Raspberry PI 4B: Essentials](openwrt-raspberry-pi-4b-essentials) I described the router itself, its
@@ -80,7 +80,7 @@ three networks, the LAN behind it, and the phone somewhere on a mobile network:
 {{< mermaid >}}
 flowchart TB
   subgraph away["Away from home"]
-    phone["Phone<br/>in the tunnel:<br/>10.0.1.2<br/>fd12:3456:789a:ff::2<br/>LAN only profile (planned):<br/>10.0.1.3<br/>fd12:3456:789a:ff::3"]
+    phone["Phone<br/>in the tunnel:<br/>10.0.1.2<br/>fd12:3456:789a:ff::2<br/>LAN only profile:<br/>10.0.1.3<br/>fd12:3456:789a:ff::3"]
   end
   phone ---|"mobile network"| inet(("Internet"))
   inet --- modem["NBN HFC modem<br/>(bridge only)"]
@@ -122,7 +122,7 @@ on the router:
 | Tunnel network | `10.0.1.0/24` | `fd12:3456:789a:ff::/64` |
 | Router | `10.0.1.1` | `fd12:3456:789a:ff::1` |
 | Phone | `10.0.1.2` | `fd12:3456:789a:ff::2` |
-| Phone, LAN only profile (planned) | `10.0.1.3` | `fd12:3456:789a:ff::3` |
+| Phone, LAN only profile | `10.0.1.3` | `fd12:3456:789a:ff::3` |
 
 The IPv4 addresses simply follow the LAN: `10.0.0.0/24` is the LAN, so `10.0.1.0/24` is the next network, with the
 router at `.1` and the phone at `.2`. The IPv6 addresses need a little more explanation. They come from the router's
@@ -466,7 +466,7 @@ So every device gets a peer of its own, with its own keys and the next free addr
 | Peer | Allowed IPs |
 |---|---|
 | `phone` | `10.0.1.2/32`, `fd12:3456:789a:ff::2/128` |
-| `phone_lan` | `10.0.1.3/32`, `fd12:3456:789a:ff::3/128`, the LAN only profile of the phone (planned, see below) |
+| `phone_lan` | `10.0.1.3/32`, `fd12:3456:789a:ff::3/128`, the LAN only profile of the phone, see below |
 | `laptop` | `10.0.1.4/32`, `fd12:3456:789a:ff::4/128` |
 | `tablet` | `10.0.1.5/32`, `fd12:3456:789a:ff::5/128` |
 
@@ -488,8 +488,8 @@ abroad. Most of the time, however, I only want to reach my home network from the
 `chat.lan`, while everything else goes directly over the mobile network. This is usually called a split tunnel. The
 full tunnel profile stays as it is, and the phone gets a second profile next to it.
 
-(Note: I have written this section down, but I have not set up or tested the second profile yet. The commands and
-the configuration below have not been run on my router so far)
+(Note: I set up this profile with LuCI and tested it from the phone over the mobile network. The command line version
+further below shows the same peer, but I did not run it)
 
 ### Which traffic enters the tunnel
 
@@ -560,7 +560,7 @@ peer gets the next free addresses:
 | Peer | Description | IPv4 | IPv6 |
 |---|---|---|---|
 | `phone` | Full tunnel | `10.0.1.2/32` | `fd12:3456:789a:ff::2/128` |
-| `phone_lan` | LAN only (planned) | `10.0.1.3/32` | `fd12:3456:789a:ff::3/128` |
+| `phone_lan` | LAN only | `10.0.1.3/32` | `fd12:3456:789a:ff::3/128` |
 
 ### On the router
 
@@ -605,8 +605,7 @@ whole tunnel network and therefore to the new peer as well.
 
 ### On the phone
 
-The configuration I expect from the dialog looks like this. It is not copied from the router, since I have not
-generated it yet:
+With all fields filled in as described above, the configuration from the dialog looks like this:
 
 ```text
 [Interface]
@@ -626,6 +625,24 @@ PersistentKeepAlive = 25
 In the WireGuard app, "Create from QR code" adds it as a second tunnel next to the first one. Switching one of them
 on switches the other one off. If the dialog does not take the changed Allowed IPs over, they can also be edited in
 the app after the import, in the peer section of the tunnel.
+
+(Note: when I created the peer on my router, I left out the preshared key and the IPv6 address in the Allowed IPs of
+the peer on the router. The tunnel works without them, the preshared key is optional. Without the IPv6 address,
+however, the phone gets no IPv6 address in the tunnel and cannot reach the ULA addresses at home. The configuration
+above is the complete one, as described in this section)
+
+### Test of the LAN only profile
+
+My first attempt failed completely: with the profile switched on, neither the LAN nor the internet worked on the
+phone. The router did not know the new peer yet, because I had not restarted `wg0`, as described in the warning
+further up. Since this profile sends all DNS queries into the tunnel, a tunnel without a handshake means that no name
+resolves at all, which made it look as if the whole phone was offline. After the restart of `wg0`, the router showed
+the handshake of the new peer within seconds.
+
+Then I tested from the phone over the mobile network, with Wi-Fi switched off: `http://chat.lan` opened, and so did
+websites on the internet. On the router, all connections of the new peer went to addresses at home, to the router
+`10.0.0.1` for DNS and to the LibreChat server in the LAN, and none to the internet. Its transfer counter in
+`wg show wg0` only grew by a few hundred KiB, which fits a tunnel that carries DNS and the LAN only.
 
 ## Test
 
@@ -697,8 +714,9 @@ keys of the router and all peers.
 The router runs a WireGuard server on UDP port 51820 with its own firewall zone. Clients get an address from
 `10.0.1.0/24` and a ULA address, may reach the LAN and the internet, and are set up by scanning a QR code from the web
 interface, one peer per device. They connect to `home.example.com`, which the router keeps up to date in Route 53
-itself. A second, LAN only profile for the phone, which leaves the internet traffic on the mobile network, is planned
-and described above. The two pitfalls I ran into are LuCI's unsaved changes and peer changes which need a restart
-of `wg0`. The next part of the series is [BitTorrent through a VPN](openwrt-raspberry-pi-4b-bittorrent-vpn). A second
-Wi-Fi network on VLAN 2 whose traffic leaves through a WireGuard tunnel in another country is planned and described
-in [A Wi-Fi Network in Another Country](wifi-network-in-another-country).
+itself. A second, LAN only profile for the phone leaves the internet traffic on the mobile network and only sends DNS
+and the traffic for the home network through the tunnel. The two pitfalls I ran into are LuCI's unsaved changes and
+peer changes which need a restart of `wg0`. The next part of the series is
+[BitTorrent through a VPN](openwrt-raspberry-pi-4b-bittorrent-vpn). A second Wi-Fi network on VLAN 2 whose traffic
+leaves through a WireGuard tunnel in another country is planned and described in
+[A Wi-Fi Network in Another Country](wifi-network-in-another-country).
