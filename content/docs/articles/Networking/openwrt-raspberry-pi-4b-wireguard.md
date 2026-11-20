@@ -514,8 +514,8 @@ the provider can hand out a different prefix after a reconnect, and the client c
 
 The LAN only profile keeps `DNS = 10.0.0.1`. Since `10.0.0.1` is inside the Allowed IPs in the phone's profile,
 Android sends all DNS queries through the tunnel to dnsmasq on the router. Names in the LAN, such as `chat.lan` or
-`gitea.lan`, are answered locally, and all other names are forwarded upstream by the router as usual. Only the small DNS packets use the
-tunnel, the actual internet traffic does not.
+`gitea.lan`, are answered locally, and all other names are forwarded upstream by the router as usual. Only the small
+DNS packets use the tunnel, the actual internet traffic does not.
 
 It is worth mentioning that real split DNS, where only `.lan` names go to the router and everything else to the DNS
 server of the mobile network, is not supported by the official WireGuard apps on Android and iOS. Tools like
