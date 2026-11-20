@@ -21,8 +21,8 @@ Each part of this series describes one piece of my router, after the introductio
 and [LibreChat](openwrt-raspberry-pi-4b-librechat). Every one of them adds a network, a firewall zone, a rule or a name, and
 after a few parts, I found it hard to keep the whole picture in my head. This page puts everything in one place: the
 networks and their addresses, the firewall zones and what may pass between them, where names are resolved, which
-services the router offers on which network, and a server in the LAN, in my case a NAS, including how it can be
-reached through WireGuard.
+services the router offers on which network, and the servers in the LAN, in my case a NAS and a small PC with
+LibreChat, including how they can be reached through WireGuard.
 
 It does not repeat how each piece was set up. For that, the respective article is the place to look.
 
@@ -108,10 +108,12 @@ flowchart TB
     pc["PC<br/>.100 - .249 by DHCP"]
     tv["LG TV"]
     nas["NAS<br/>nas.lan - 10.0.0.10"]
+    chatpc["LibreChat server<br/>chat.lan - 10.0.0.196"]
   end
   sw --- pc
   sw --- tv
   sw --- nas
+  sw --- chatpc
   phone -. "WireGuard tunnel<br/>UDP 51820" .-> wg0
   wan -. "ddns-scripts<br/>A and AAAA record" .-> r53
 {{< /mermaid >}}
@@ -124,11 +126,9 @@ flowchart TB
   docker0["docker0 - zone docker<br/>172.17.0.1/16<br/>no containers"]
   gluetun["br-torrent - zone torrent<br/>10.0.200.0/24<br/>gluetun + qBittorrent<br/>10.0.200.2"]
   gitea["br-gitea - zone gitea<br/>10.0.203.0/24<br/>gitea<br/>10.0.203.2"]
-  lc["planned<br/>br-chat, br-chatdb<br/>10.0.201.0/24, 10.0.202.0/24<br/>LibreChat, MongoDB,<br/>Meilisearch"]
   fw --- docker0
   fw --- gluetun
   fw --- gitea
-  fw -.- lc
   gluetun -. "WireGuard tunnel to Proton<br/>UDP 51820, the only way out" .-> wan["eth1 - zone wan"]
   wan --- proton["ProtonVPN<br/>P2P server"]
 {{< /mermaid >}}
@@ -156,13 +156,12 @@ A few things are worth pointing out:
 | Tunnel | `wg0` | `10.0.1.0/24`, router `.1`, phone `.2` | `fd12:3456:789a:ff::/64` | [WireGuard](openwrt-raspberry-pi-4b-wireguard) |
 | Docker default | `docker0` | `172.17.0.0/16`, unused | none | [Docker](openwrt-raspberry-pi-4b-docker) |
 | torrent | `br-torrent` | `10.0.200.0/24`, gluetun `.2` | none | [BitTorrent](openwrt-raspberry-pi-4b-bittorrent-vpn) |
-| chat (planned) | `br-chat` | `10.0.201.0/24`, LibreChat `.2` | none | [LibreChat](openwrt-raspberry-pi-4b-librechat) |
-| chatdb (planned) | `br-chatdb` | `10.0.202.0/24`, internal | none | [LibreChat](openwrt-raspberry-pi-4b-librechat) |
 | gitea | `br-gitea` | `10.0.203.0/24`, Gitea `.2` | none | [Gitea](openwrt-raspberry-pi-4b-gitea) |
 
 The numbering follows a simple scheme of mine: `10.0.0.0/24` is the LAN, `10.0.1.0/24` the tunnel, and the Docker
 networks start at `10.0.200.0/24` and count up. They are outside of Docker's own address pools, so Docker never hands
-them out to another network. Only the LAN gets public IPv6 addresses. The tunnel uses the ULA prefix, which needs
+them out to another network. `10.0.201.0/24` and `10.0.202.0/24` were reserved for LibreChat on the router. Since
+LibreChat runs on a separate PC in the LAN instead, they are free. Only the LAN gets public IPv6 addresses. The tunnel uses the ULA prefix, which needs
 NAT for IPv6 on the way out, and the Docker networks have no IPv6 at all, so their containers cannot leak through it.
 
 ## Firewall zones
@@ -178,8 +177,6 @@ no zone covers.
 | `docker` | `docker` (`docker0`) | accept | accept | accept | to `wan` | - |
 | `torrent` | device `br-torrent` | reject | accept | reject | - | - |
 | `gitea` | device `br-gitea` | reject | accept | reject | - | - |
-| `chat` (planned) | device `br-chat` | reject | accept | reject | - | - |
-| `chatdb` (planned) | device `br-chatdb` | reject | accept | reject | - | - |
 
 This is what may pass between the zones. The thick lines are forwardings, which allow everything, the dashed lines
 are rules, which allow single ports only:
@@ -255,7 +252,7 @@ flowchart LR
     outside["Phone on the<br/>mobile network"]
   end
   subgraph pi["Router"]
-    dnsmasq["dnsmasq<br/>10.0.0.1:53, 10.0.1.1:53<br/>*.lan from the DHCP leases<br/>router.lan, nas.lan<br/>gitea.lan = 10.0.203.2<br/>torrent.lan = 10.0.0.1"]
+    dnsmasq["dnsmasq<br/>10.0.0.1:53, 10.0.1.1:53<br/>*.lan from the DHCP leases<br/>router.lan, nas.lan<br/>gitea.lan = 10.0.203.2<br/>torrent.lan = 10.0.0.1<br/>chat.lan = 10.0.0.196"]
     avahi["Avahi, mDNS<br/>router.local<br/>on br-lan only"]
     dockerdns["Docker's embedded DNS<br/>127.0.0.11"]
   end
@@ -272,8 +269,9 @@ flowchart LR
 {{< /mermaid >}}
 
 - **dnsmasq** is the DNS server for the LAN and the tunnel. It knows every device which got its address via DHCP as
-  `<name>.lan`, the router itself as `router.lan`, and two static entries: `gitea.lan` points to the container
-  directly, `torrent.lan` to the router's LAN address, where Docker publishes the web interface. Everything else it
+  `<name>.lan`, the router itself as `router.lan`, and three static entries: `gitea.lan` points to the container
+  directly, `torrent.lan` to the router's LAN address, where Docker publishes the web interface, and `chat.lan` to
+  the LibreChat server in the LAN. Everything else it
   forwards to the DNS servers of the provider. In LuCI, the static entries are in Network → DHCP and DNS →
   **Hostnames**.
 - **The short name without `.lan`** only works in the LAN. DHCP hands out `lan` as the search domain, so `router` is
@@ -309,8 +307,8 @@ other way around, the `docker` zone accepts input, but ksmbd, Avahi and minidlna
 
 ## A server in the LAN: the NAS
 
-My LAN has one server apart from the router, a NAS. It is a separate device which offers SMB shares and a web
-interface for its administration (ports 80, 443, 445, 5000 and 5001 answered on mine). For the router, it is just
+My LAN has two servers apart from the router. The first one is a NAS, a separate device which offers SMB shares and
+a web interface for its administration (ports 80, 443, 445, 5000 and 5001 answered on mine). For the router, it is just
 another device in the LAN, like the PC or the TV. The same applies to any other server which sits in the LAN, such
 as a second file server, a printer or a home automation box.
 
@@ -446,10 +444,46 @@ As with `Masquerade-VPN-IPv6`, `src` is the outbound zone, here `lan`. The disad
 tell the phone from the router, in its logs and in its own access rules. So I would only use this as a last resort.
 (Note: I have not tested this rule, since my NAS did not need it)
 
+## A second server in the LAN: LibreChat
+
+The second server in my LAN is a Lenovo ThinkCentre M90q, a tiny PC with Ubuntu and Docker, which runs
+[LibreChat](openwrt-raspberry-pi-4b-librechat) for the whole family. I had planned LibreChat on the router first,
+with two Docker networks and zones of its own, but MongoDB, which LibreChat needs, no longer runs on the CPU of the
+PI 4 in a current version. On a separate PC, LibreChat's own compose file runs as it is.
+
+For the router, it is a device in the LAN like the NAS, and the same three points from above apply:
+
+{{< mermaid >}}
+flowchart LR
+  phone["Phone<br/>10.0.1.2"] -. "WireGuard tunnel" .-> wg0
+  lanc["Devices in the LAN"]
+  subgraph pi["Router"]
+    wg0["wg0 - zone vpn"] -- "forwarding<br/>vpn to lan" --> brlan["br-lan - zone lan"]
+    dns["dnsmasq<br/>chat.lan = 10.0.0.196"]
+  end
+  brlan -- "TCP 80" --> chatpc["LibreChat server<br/>10.0.0.196<br/>gateway 10.0.0.1"]
+  lanc -- "TCP 80, directly" --> chatpc
+  phone -. "chat.lan?" .-> dns
+  lanc -. "chat.lan?" .-> dns
+{{< /mermaid >}}
+
+- **The address and the name.** The router has a static lease for the server, `10.0.0.196`, and a static DNS entry
+  `chat` in Network → DHCP and DNS → **Hostnames**, which dnsmasq answers as `chat.lan`.
+- **The tunnel.** The forwarding from `vpn` to `lan` already covers the server. Unlike Gitea and qBittorrent in the
+  Docker networks of the router, LibreChat needs no traffic rule of its own.
+- **Its own firewall.** The server runs `ufw`, which only allows SSH from the LAN. LibreChat is reachable from the
+  tunnel anyway, because Docker publishes its port 80 with rules of its own, which come before the rules of `ufw`.
+- **The internet.** There is no port forwarding to the server, and the zone `wan` drops everything towards the LAN.
+
+Please note, LibreChat runs on plain HTTP, without a certificate. The address has to be typed in full, as
+`http://chat.lan`. With only `chat.lan`, Chrome on Android starts a Google search instead, because `.lan` is not a
+top-level domain it knows. The [LibreChat article](openwrt-raspberry-pi-4b-librechat) explains this in detail, what
+I tried instead, and why the server rejects port 443 so that the browser falls back to HTTP without waiting.
+
 ## Summary
 
 The router connects six networks: the WAN, the LAN, the WireGuard tunnel, Docker's default bridge, and one Docker
-network each for BitTorrent and Gitea, with two more planned for LibreChat. Each of them is a firewall zone, and
-apart from the LAN and the tunnel, every zone gets exactly the ports it needs and nothing more. Names are resolved by
-dnsmasq for the LAN and the tunnel, and a server in the LAN, such as my NAS, is reachable through WireGuard as long as
-its own firewall accepts the tunnel's addresses.
+network each for BitTorrent and Gitea. Each of them is a firewall zone, and apart from the LAN and the tunnel, every
+zone gets exactly the ports it needs and nothing more. Names are resolved by dnsmasq for the LAN and the tunnel, and
+the servers in the LAN, my NAS and the LibreChat server at `http://chat.lan`, are reachable through WireGuard as long
+as their own firewalls accept the tunnel's addresses.

@@ -33,8 +33,8 @@ step at the end of the setup and needs nothing but two more firewall rules.
 Gitea is a single Go program, and with SQLite as its database it does not need a database container next to it. On
 my router, it uses about 96MB of memory after the start, out of the 512MB I allow it, and the whole directory with
 the configuration, the database and the first repository took 2.3MB of disk after the setup. With about 12GB free
-on `/opt`, there is room for a lot of repositories. Compared to [LibreChat](openwrt-raspberry-pi-4b-librechat) with its
-three containers, Gitea is very light.
+on `/opt`, there is room for a lot of repositories. Compared to [LibreChat](openwrt-raspberry-pi-4b-librechat), which
+needs a database and a search index next to it, Gitea is very light.
 
 ## How it fits together
 
@@ -81,8 +81,9 @@ flowchart LR
 | Memory | `mem_limit: 512m` |
 | Database | SQLite in `/opt/gitea/data` |
 
-The subnet follows `10.0.200.0/24` of the torrent network. `10.0.201.0/24` and `10.0.202.0/24` are reserved for the
-two LibreChat networks, so Gitea gets `203`.
+The subnet follows `10.0.200.0/24` of the torrent network. `10.0.201.0/24` and `10.0.202.0/24` were reserved for the
+two LibreChat networks I had planned on the router at that time, so Gitea got `203`. LibreChat now runs on a separate
+PC in the LAN.
 
 ## The name: gitea.lan, not gitea.local
 
@@ -102,7 +103,7 @@ gets its address from the router is already known in the LAN as `<name>.lan`, so
 
 ## Reaching the container directly
 
-qBittorrent and LibreChat are published on the LAN address of the router, `10.0.0.1`, through Docker's DNAT. For
+qBittorrent is published on the LAN address of the router, `10.0.0.1`, through Docker's DNAT. For
 Gitea, I chose a different way: the LAN reaches the container on its own address, `10.0.203.2`. The devices in the
 LAN use the router as their default gateway anyway, so a packet to `10.0.203.2` goes to the router, which routes it
 to `br-gitea` like any other network it knows.
@@ -218,7 +219,7 @@ A few notes on this configuration:
   any other interface". The zone narrows that down to the LAN: fw4 only has accept rules from `lan`, so traffic from
   `wan`, or from any other zone, to `br-gitea` runs into the reject of the zone. A packet must pass both Docker's
   tables and `inet fw4`.
-- **The zone matters, even though Gitea needs nothing.** As in the LibreChat article: without a zone, the bridge
+- **The zone matters, even though Gitea needs nothing.** Without a zone, the bridge
   would fall back to the defaults of fw4, whose input policy is accept, and Gitea could reach SSH, LuCI and dnsmasq
   on the router through `10.0.203.1`. The zone rejects that. Gitea does not need any outgoing connection either. I
   use no mirrors, no mail, no update checks and no Gravatar, so there is no rule to `wan` at all.
@@ -550,7 +551,7 @@ broken test.
 ## Open points
 
 - **Plain HTTP.** Passwords and session cookies travel unencrypted through the LAN, Git itself uses SSH. This is the
-  same trade-off as with LibreChat, and a reverse proxy with HTTPS in front of both would be the fix.
+  same trade-off as with LibreChat, and a reverse proxy with HTTPS would be the fix.
 - **Backups.** Nothing backs up `/opt/gitea` yet. `config/app.ini` holds the secret keys of Gitea, and losing it
   invalidates all sessions and tokens. A nightly backup, for example with `gitea dump`, is the next step.
 - **CI.** Gitea Actions with `act_runner` is a later step. The runner needs internet access to fetch its images and

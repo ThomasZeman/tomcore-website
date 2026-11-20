@@ -262,8 +262,9 @@ already masquerades everything that leaves through it (IPv4 Masquerading), inclu
 Please note, `lan` and `wan` do not include the services which run in Docker networks with zones of their own. From
 the tunnel, those need rules of their own, which are optional and described in the respective articles:
 `Allow-Torrent-WebUI-VPN` in the [BitTorrent article](openwrt-raspberry-pi-4b-bittorrent-vpn),
-`Allow-Gitea-Web-VPN` and `Allow-Gitea-SSH-VPN` in the [Gitea article](openwrt-raspberry-pi-4b-gitea), and
-`Allow-Chat-WebUI-VPN` in the [article about LibreChat](openwrt-raspberry-pi-4b-librechat).
+and `Allow-Gitea-Web-VPN` and `Allow-Gitea-SSH-VPN` in the [Gitea article](openwrt-raspberry-pi-4b-gitea).
+[LibreChat](openwrt-raspberry-pi-4b-librechat) runs on a separate PC in the LAN, so the forwarding to `lan` already
+covers it.
 
 ### Opening the port
 

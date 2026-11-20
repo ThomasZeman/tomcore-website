@@ -87,7 +87,7 @@ And these are planned or worth considering, but not running yet:
 
 | Feature | Why it might be interesting | Status |
 |---|---|---|
-| LibreChat | A chat interface for AI models, hosted at home | [Planned](openwrt-raspberry-pi-4b-librechat) |
+| LibreChat | A chat interface for AI models, hosted at home on a separate PC in the LAN | [In progress](openwrt-raspberry-pi-4b-librechat) |
 | A Wi-Fi network in another country | A separate VLAN whose traffic exits through a WireGuard tunnel abroad | [Planned](wifi-network-in-another-country) |
 | Guest network | Visitors get Internet, but no access to the LAN | Idea |
 | Ad and tracker blocking | DNS based blocking for every device, for example with `adblock` | Idea |
