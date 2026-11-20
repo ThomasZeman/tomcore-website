@@ -209,6 +209,14 @@ handshake from a client which already has the new one.**
 I ran into exactly this. I generated a new key pair for the phone, imported it, and the phone kept sending handshakes
 which never got an answer. The section about troubleshooting below shows how to spot this on the router.
 
+The reason is how OpenWrt stores the peers. Each peer is a section of its own in `/etc/config/network`, of the type
+`wireguard_wg0`, next to the section of the interface `wg0`. "Save & Apply" reloads the network configuration, and
+netifd then restarts only the interfaces whose own section has changed. A new or changed peer does not change the
+section of `wg0`, so the interface keeps running with its old list of peers. The handler of my router
+(`/lib/netifd/proto/wireguard.sh`) only reads the peers when the interface starts. I could see this in the system log
+when I added the second peer below: "Save & Apply" reloaded the wireless interfaces and dnsmasq, but `wg0` was not
+touched until I restarted it. Please note, the restart also interrupts the tunnels of all other peers for a moment.
+
 ### On the command line
 
 The same on the command line, for example to set up the next router quickly. `umask go=` makes sure nobody but root
@@ -468,7 +476,9 @@ network and not to a single peer. A new device needs nothing but a new peer:
 1. Network → Interfaces, **Edit** on `wg0`, the **Peers** tab, **Add peer**. The fields are the same as for the
    first peer, with a description of its own, **Generate new key pair**, **Generate preshared key** and the next free
    Allowed IPs.
-2. **Save** in both dialogs, **Save & Apply**, then **Restart** on `wg0`.
+2. **Save** in the peer dialog, **Save** in the dialog of `wg0`, **Save & Apply** at the top right, and then
+   **Restart** in the row of `wg0` on the Interfaces page. Without the restart, WireGuard does not know the new peer
+   and ignores its handshakes, as described in the warning above.
 3. **Edit** on the new peer, **Generate configuration…**, and scan the QR code or download the file on the new device.
 
 ## A second profile for the phone: LAN only
@@ -560,7 +570,10 @@ The peer is created exactly like the first one:
    key pair**, **Generate preshared key**. The field Allowed IPs here is the list of the peer on the router, so it
    gets only the phone's own tunnel addresses, `10.0.1.3/32` and `fd12:3456:789a:ff::3/128`. Route Allowed IPs stays
    off, the endpoint stays empty, and Persistent Keep Alive is `25`, as for the first peer.
-2. **Save** in both dialogs, **Save & Apply**, then **Restart** on `wg0`.
+2. **Save** in the peer dialog, **Save** in the dialog of `wg0`, **Save & Apply** at the top right, and then
+   **Restart** in the row of `wg0` on the Interfaces page. "Save & Apply" alone is not enough. Without the restart,
+   the router ignores the handshakes of the new profile, and since the profile sends all DNS queries into the tunnel,
+   nothing works on the phone at all, neither the LAN nor the internet.
 3. **Edit** on the new peer, **Generate configuration…**. This dialog is on the router, but everything in it ends up
    in the phone's profile. Its field Allowed IPs is therefore the list in the phone's profile, and I replace the
    default `0.0.0.0/0` and `::/0` with `10.0.0.0/16` and `fd12:3456:789a::/48`. The DNS server and the endpoint stay
