@@ -85,7 +85,7 @@ This is the router with its networks, the devices in the LAN and the connections
 
 {{< mermaid >}}
 flowchart TB
-  phone["Phone, away from home<br/>tunnel: 10.0.1.2"]
+  phone["Phone, away from home<br/>tunnel: 10.0.1.2<br/>LAN only profile: 10.0.1.3<br/>(planned)"]
   r53["AWS Route 53<br/>home.example.com"]
   inet(("Internet"))
   phone ---|"mobile network"| inet
@@ -153,7 +153,7 @@ A few things are worth pointing out:
 |---|---|---|---|---|
 | WAN | `eth1` | `192.0.2.45`, public, by DHCP | `2001:db8:ffff:1::2a/128` by DHCPv6, plus the delegated `2001:db8:1234::/48` | [Essentials](openwrt-raspberry-pi-4b-essentials) |
 | LAN | `br-lan` on `eth0` | `10.0.0.0/24`, router `.1`, DHCP pool `.100` to `.249` | `2001:db8:1234::/64` and `fd12:3456:789a::/64` | [Essentials](openwrt-raspberry-pi-4b-essentials) |
-| Tunnel | `wg0` | `10.0.1.0/24`, router `.1`, phone `.2` | `fd12:3456:789a:ff::/64` | [WireGuard](openwrt-raspberry-pi-4b-wireguard) |
+| Tunnel | `wg0` | `10.0.1.0/24`, router `.1`, phone `.2`, phone LAN only profile `.3` (planned) | `fd12:3456:789a:ff::/64` | [WireGuard](openwrt-raspberry-pi-4b-wireguard) |
 | Docker default | `docker0` | `172.17.0.0/16`, unused | none | [Docker](openwrt-raspberry-pi-4b-docker) |
 | torrent | `br-torrent` | `10.0.200.0/24`, gluetun `.2` | none | [BitTorrent](openwrt-raspberry-pi-4b-bittorrent-vpn) |
 | gitea | `br-gitea` | `10.0.203.0/24`, Gitea `.2` | none | [Gitea](openwrt-raspberry-pi-4b-gitea) |

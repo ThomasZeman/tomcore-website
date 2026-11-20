@@ -7,7 +7,8 @@ aiAssisted: true
 
 {{% hint info %}}
 **Set up and tested in November 2026** on OpenWrt 25.12.5 with kernel 6.12.94 and wireguard-tools 1.0.20260223. This
-part of the series builds on the Essentials and the Dynamic DNS article.
+part of the series builds on the Essentials and the Dynamic DNS article. The second, LAN only profile for the phone
+is planned and not set up yet.
 {{% /hint %}}
 
 In [OpenWrt on a Raspberry PI 4B: Essentials](openwrt-raspberry-pi-4b-essentials) I described the router itself, its
@@ -79,7 +80,7 @@ three networks, the LAN behind it, and the phone somewhere on a mobile network:
 {{< mermaid >}}
 flowchart TB
   subgraph away["Away from home"]
-    phone["Phone<br/>in the tunnel:<br/>10.0.1.2<br/>fd12:3456:789a:ff::2"]
+    phone["Phone<br/>in the tunnel:<br/>10.0.1.2<br/>fd12:3456:789a:ff::2<br/>LAN only profile (planned):<br/>10.0.1.3<br/>fd12:3456:789a:ff::3"]
   end
   phone ---|"mobile network"| inet(("Internet"))
   inet --- modem["NBN HFC modem<br/>(bridge only)"]
@@ -121,6 +122,7 @@ on the router:
 | Tunnel network | `10.0.1.0/24` | `fd12:3456:789a:ff::/64` |
 | Router | `10.0.1.1` | `fd12:3456:789a:ff::1` |
 | Phone | `10.0.1.2` | `fd12:3456:789a:ff::2` |
+| Phone, LAN only profile (planned) | `10.0.1.3` | `fd12:3456:789a:ff::3` |
 
 The IPv4 addresses simply follow the LAN: `10.0.0.0/24` is the LAN, so `10.0.1.0/24` is the next network, with the
 router at `.1` and the phone at `.2`. The IPv6 addresses need a little more explanation. They come from the router's
@@ -454,8 +456,9 @@ So every device gets a peer of its own, with its own keys and the next free addr
 | Peer | Allowed IPs |
 |---|---|
 | `phone` | `10.0.1.2/32`, `fd12:3456:789a:ff::2/128` |
-| `laptop` | `10.0.1.3/32`, `fd12:3456:789a:ff::3/128` |
-| `tablet` | `10.0.1.4/32`, `fd12:3456:789a:ff::4/128` |
+| `phone_lan` | `10.0.1.3/32`, `fd12:3456:789a:ff::3/128`, the LAN only profile of the phone (planned, see below) |
+| `laptop` | `10.0.1.4/32`, `fd12:3456:789a:ff::4/128` |
+| `tablet` | `10.0.1.5/32`, `fd12:3456:789a:ff::5/128` |
 
 The interface, the port, the firewall zone and the NAT rules stay as they are, since they apply to the whole tunnel
 network and not to a single peer. A new device needs nothing but a new peer:
@@ -465,6 +468,134 @@ network and not to a single peer. A new device needs nothing but a new peer:
    Allowed IPs.
 2. **Save** in both dialogs, **Save & Apply**, then **Restart** on `wg0`.
 3. **Edit** on the new peer, **Generate configuration…**, and scan the QR code or download the file on the new device.
+
+## A second profile for the phone: LAN only
+
+The profile from the QR code above sends all traffic through the tunnel. That is the right one on a public Wi-Fi or
+abroad. Most of the time, however, I only want to reach my home network from the phone, for example `gitea.lan` or
+`chat.lan`, while everything else goes directly over the mobile network. This is usually called a split tunnel. The
+full tunnel profile stays as it is, and the phone gets a second profile next to it.
+
+(Note: I have written this section down, but I have not set up or tested the second profile yet. The commands and
+the configuration below have not been run on my router so far)
+
+### Which traffic enters the tunnel
+
+WireGuard decides on the client which traffic goes into the tunnel, with `AllowedIPs` in the `[Peer]` section of the
+client configuration. On the client, these are the destinations that are routed into the tunnel, which is not the
+same as the Allowed IPs of the peer on the router, as described in the section about the first peer. So the router
+needs nothing for the split behaviour itself. The LAN only profile differs from the full tunnel in a single line:
+
+```text
+AllowedIPs = 10.0.0.0/16, fd12:3456:789a::/48
+```
+
+`10.0.0.0/16` covers the LAN `10.0.0.0/24`, the tunnel `10.0.1.0/24` and the Docker networks on the router, such as
+`10.0.200.0/24` for BitTorrent and `10.0.203.0/24` for Gitea, in one entry. The /48 is the whole ULA prefix, so it
+covers the ULA addresses of the LAN (`fd12:3456:789a::/64`) and of the tunnel (`fd12:3456:789a:ff::/64`). The public
+prefix of the LAN, `2001:db8:1234::/64`, is not part of the list on purpose. As described in the Essentials article,
+the provider can hand out a different prefix after a reconnect, and the client configuration is fixed.
+
+### DNS
+
+The LAN only profile keeps `DNS = 10.0.0.1`. Since `10.0.0.1` is inside the Allowed IPs, Android sends all DNS queries
+through the tunnel to dnsmasq on the router. Names in the LAN, such as `chat.lan` or `gitea.lan`, are answered
+locally, and all other names are forwarded upstream by the router as usual. Only the small DNS packets use the
+tunnel, the actual internet traffic does not.
+
+It is worth mentioning that real split DNS, where only `.lan` names go to the router and everything else to the DNS
+server of the mobile network, is not supported by the official WireGuard apps on Android and iOS. Tools like
+[Tailscale](https://tailscale.com/) do this, but I do not need it.
+
+This has a few side effects I want to point out:
+
+- **No tunnel, no names.** If the profile is active but the tunnel cannot connect, no name resolves at all, not even
+  public ones. The fix is to switch the profile off.
+- **Public names are resolved from home.** A CDN may therefore pick servers close to my home rather than close to the
+  phone. This only matters abroad, and there the full tunnel is the right profile anyway.
+- **Overlapping networks.** A Wi-Fi network which itself uses addresses out of `10.0.x.x` would clash with
+  `10.0.0.0/16`. This should be rare, but if a LAN device cannot be reached on a foreign Wi-Fi, this is the first
+  thing I would check.
+
+### One peer or two
+
+Android runs only one VPN at a time, so the two profiles are never active together. There are two ways to set this
+up:
+
+1. **The same peer for both profiles.** Both profiles have the same key and the same tunnel address, and only the
+   `AllowedIPs` differ. Nothing changes on the router. The disadvantage is that the WireGuard app on Android has no
+   button to duplicate a tunnel, so the private key would have to be copied into the second profile by hand.
+2. **A second peer on the router.** The second profile gets its own keys and its own tunnel address. This costs one
+   more peer, but `wg show wg0` then shows which of the two profiles is in use, by the allowed ips of the peer with
+   the latest handshake.
+
+I chose the second way. It does not contradict what I wrote about more devices above: two peers on one device are
+fine, since the device never uses both at the same time, and each of them still has exactly one endpoint. The new
+peer gets the next free addresses:
+
+| Peer | Description | IPv4 | IPv6 |
+|---|---|---|---|
+| `phone` | Full tunnel | `10.0.1.2/32` | `fd12:3456:789a:ff::2/128` |
+| `phone_lan` | LAN only (planned) | `10.0.1.3/32` | `fd12:3456:789a:ff::3/128` |
+
+### On the router
+
+The peer is created exactly like the first one:
+
+1. Network → Interfaces, **Edit** on `wg0`, the **Peers** tab, **Add peer**. Description `phone-lan`, **Generate new
+   key pair**, **Generate preshared key**, Allowed IPs `10.0.1.3/32` and `fd12:3456:789a:ff::3/128`. Route Allowed
+   IPs stays off, the endpoint stays empty, and Persistent Keep Alive is `25`, as for the first peer.
+2. **Save** in both dialogs, **Save & Apply**, then **Restart** on `wg0`.
+3. **Edit** on the new peer, **Generate configuration…**. In the dialog, I replace the default Allowed IPs `0.0.0.0/0`
+   and `::/0` with `10.0.0.0/16` and `fd12:3456:789a::/48`, and leave the DNS server and the endpoint as they are.
+
+Please note, the restart of `wg0` interrupts the tunnel of the first peer for a moment as well. On the command line,
+the same peer looks like this. `ifup wg0` restarts the interface, so the new peer takes effect:
+
+```shell
+root@OpenWrt:~# umask go=
+root@OpenWrt:~# PEER_KEY=$(wg genkey)
+root@OpenWrt:~# uci batch <<EOF
+set network.phone_lan=wireguard_wg0
+set network.phone_lan.description='phone-lan'
+set network.phone_lan.private_key='$PEER_KEY'
+set network.phone_lan.public_key='$(echo "$PEER_KEY" | wg pubkey)'
+set network.phone_lan.preshared_key='$(wg genpsk)'
+add_list network.phone_lan.allowed_ips='10.0.1.3/32'
+add_list network.phone_lan.allowed_ips='fd12:3456:789a:ff::3/128'
+set network.phone_lan.persistent_keepalive='25'
+EOF
+root@OpenWrt:~# uci commit network
+root@OpenWrt:~# ifup wg0
+```
+
+The section name is `phone_lan` with an underscore, since uci does not allow a hyphen there. The firewall needs no
+change either. The zone `vpn`, the rules for the Docker networks and the NAT rule `Masquerade-VPN-IPv6` apply to the
+whole tunnel network and therefore to the new peer as well.
+
+### On the phone
+
+The configuration I expect from the dialog looks like this. It is not copied from the router, since I have not
+generated it yet:
+
+```text
+[Interface]
+PrivateKey = (hidden)
+Address = 10.0.1.3/32, fd12:3456:789a:ff::3/128
+# ListenPort not defined
+DNS = 10.0.0.1
+
+[Peer]
+PublicKey = (hidden)
+PresharedKey = (hidden)
+AllowedIPs = 10.0.0.0/16, fd12:3456:789a::/48
+Endpoint = home.example.com:51820
+PersistentKeepAlive = 25
+```
+
+In the WireGuard app, "Create from QR code" adds it as a second tunnel next to the first one. Switching one of them
+on switches the other one off. If the dialog does not take the changed Allowed IPs over, they can also be edited in
+the app after the import.
 
 ## Test
 
@@ -536,7 +667,8 @@ keys of the router and all peers.
 The router runs a WireGuard server on UDP port 51820 with its own firewall zone. Clients get an address from
 `10.0.1.0/24` and a ULA address, may reach the LAN and the internet, and are set up by scanning a QR code from the web
 interface, one peer per device. They connect to `home.example.com`, which the router keeps up to date in Route 53
-itself. The two pitfalls I ran into are LuCI's unsaved changes and peer changes which need a restart of `wg0`. The
-next part of the series is [BitTorrent through a VPN](openwrt-raspberry-pi-4b-bittorrent-vpn). A second Wi-Fi network
-on VLAN 2 whose traffic leaves through a WireGuard tunnel in another country is planned and described in
-[A Wi-Fi Network in Another Country](wifi-network-in-another-country).
+itself. A second, LAN only profile for the phone, which leaves the internet traffic on the mobile network, is planned
+and described above. The two pitfalls I ran into are LuCI's unsaved changes and peer changes which need a restart
+of `wg0`. The next part of the series is [BitTorrent through a VPN](openwrt-raspberry-pi-4b-bittorrent-vpn). A second
+Wi-Fi network on VLAN 2 whose traffic leaves through a WireGuard tunnel in another country is planned and described
+in [A Wi-Fi Network in Another Country](wifi-network-in-another-country).
