@@ -8,8 +8,8 @@ aiAssisted: true
 {{% hint info %}}
 **Built in November 2026** on a Lenovo ThinkCentre M90q with Ubuntu 26.04.1 LTS, kernel 7.0.0, Docker 29.10.0,
 Docker Compose v5.8.0 and LibreChat v0.8.9. The web interface, the accounts and the restart after a reboot work.
-AWS Bedrock is configured as the model provider, but AWS was still verifying my account when I set it up, so no model
-has answered yet. I will update this article once the first chat works.
+AWS Bedrock is configured as the model provider, but my account does not have access to the Claude 5.5 models yet,
+so no model has answered in LibreChat so far. I will update this article once the first chat works.
 {{% /hint %}}
 
 This part of the series is about [LibreChat](https://www.librechat.ai/), an open source web interface for chatting
@@ -267,30 +267,33 @@ me@pc:~$ aws bedrock list-inference-profiles --region ap-southeast-2 \
 ```
 
 For Claude, there are two kinds of profiles. `au.` profiles keep the requests in Australia, `global.` profiles may
-process them anywhere in the world. The current GPT models of OpenAI are only available through `global.`. I keep the
-selection in LibreChat short, so that the family does not have to choose between a dozen models. These are the four
-I offer, with the prices for Sydney from the AWS Price List API in November 2026, in US dollars per million tokens:
+process them anywhere in the world. I keep the selection in LibreChat short, so that the family does not have to
+choose between a dozen models. These are the three I offer, with the prices for Sydney from the AWS Price List API in
+November 2026, in US dollars per million tokens:
 
 | Model | Inference profile | Input | Output |
 |---|---|---|---|
 | Claude Haiku 5.5 | `global.anthropic.claude-haiku-5-5` | $0.10 | $0.50 |
 | Claude Sonnet 5.5 | `global.anthropic.claude-sonnet-5-5` | $2.00 | $10.00 |
 | Claude Opus 5.5 | `global.anthropic.claude-opus-5-5` | $4.00 | $20.00 |
-| GPT-6.2 Sol | `global.openai.gpt-6.2-sol` | $2.00 | $10.00 |
 
-The `au.` profiles of the three Claude models cost exactly 10% more. I first configured them, and then switched to
-`global.` for all four models, since keeping the requests in Australia is not worth the extra cost to me. A typical
+The `au.` profiles cost exactly 10% more. I first configured them, and then switched to `global.` for all three
+models, since keeping the requests in Australia is not worth the extra cost to me. A typical
 question with a medium-length answer of about 2,000 input and 500 output tokens costs about one US cent with Sonnet.
 Keep in mind that every answer sends the whole conversation so far as input again, so long conversations get more
 expensive per message.
 
-(Note: Haiku and GPT-6.2 Sol also have a higher price for very long requests, the Price List API lists it as "Long
-Context". I did not find out where the limit is)
+(Note: Haiku also has a higher price for very long requests, the Price List API lists it as "Long Context". I did
+not find out where the limit is)
+
+I also wanted to offer one model of OpenAI. Bedrock has the current GPT models as well, but only through `global.`
+profiles, and GPT-6.2 Sol costs the same as Sonnet. I added it at first and took it out again, because my account has
+no access to it, and unlike the Claude models, the Bedrock console offers no way to request access.
 
 ### 2. An IAM user which may only call these models
 
 LibreChat gets an AWS key of its own, which belongs to an IAM user without any other rights. If the key ever leaks,
-it can call these four models and nothing else. The policy allows the two actions LibreChat needs to send a request
+it can call these three models and nothing else. The policy allows the two actions LibreChat needs to send a request
 and to stream the answer:
 
 ```json
@@ -307,15 +310,12 @@ and to stream the answer:
       "arn:aws:bedrock:ap-southeast-2:123456789012:inference-profile/global.anthropic.claude-haiku-*",
       "arn:aws:bedrock:ap-southeast-2:123456789012:inference-profile/global.anthropic.claude-sonnet-*",
       "arn:aws:bedrock:ap-southeast-2:123456789012:inference-profile/global.anthropic.claude-opus-*",
-      "arn:aws:bedrock:ap-southeast-2:123456789012:inference-profile/global.openai.gpt-6.2-sol",
       "arn:aws:bedrock:*::foundation-model/anthropic.claude-haiku-*",
       "arn:aws:bedrock:*::foundation-model/anthropic.claude-sonnet-*",
       "arn:aws:bedrock:*::foundation-model/anthropic.claude-opus-*",
-      "arn:aws:bedrock:*::foundation-model/openai.gpt-6.2-sol",
       "arn:aws:bedrock:::foundation-model/anthropic.claude-haiku-*",
       "arn:aws:bedrock:::foundation-model/anthropic.claude-sonnet-*",
-      "arn:aws:bedrock:::foundation-model/anthropic.claude-opus-*",
-      "arn:aws:bedrock:::foundation-model/openai.gpt-6.2-sol"
+      "arn:aws:bedrock:::foundation-model/anthropic.claude-opus-*"
     ]
   }]
 }
@@ -360,7 +360,7 @@ Together with the key, these lines in `.env` connect LibreChat to Bedrock:
 ```text
 ENDPOINTS=bedrock
 BEDROCK_AWS_DEFAULT_REGION=ap-southeast-2
-BEDROCK_AWS_MODELS=global.anthropic.claude-sonnet-5-5,global.anthropic.claude-opus-5-5,global.anthropic.claude-haiku-5-5,global.openai.gpt-6.2-sol
+BEDROCK_AWS_MODELS=global.anthropic.claude-sonnet-5-5,global.anthropic.claude-opus-5-5,global.anthropic.claude-haiku-5-5
 ```
 
 - **`ENDPOINTS=bedrock`** limits the selection in the web interface to Bedrock. Without it, LibreChat also shows the
@@ -384,15 +384,34 @@ than 2 hours. Until your account is verified, you may not have access to this
 operation.
 ```
 
-This is a check of AWS for the whole account and has nothing to do with LibreChat or the IAM user. Until it is
-finished, I could at least test the IAM policy. With the key of `librechat-bedrock`, the four models pass IAM and only
-run into the verification, while other models are rejected by IAM itself:
+This is a check of AWS for the whole account and has nothing to do with LibreChat or the IAM user. Until it was
+finished, I could at least test the IAM policy. With the key of `librechat-bedrock`, the models from the table above
+pass IAM and only run into the block of AWS, while other models are rejected by IAM itself:
 
 | Model | Result with the key of `librechat-bedrock` |
 |---|---|
-| The four models from the table above | "is not available for this account", the verification |
+| The models from the table above | "is not available for this account", blocked by AWS |
 | Another Claude model family | "is not authorized to perform: bedrock:InvokeModel", rejected by IAM |
 | An `au.` profile | "is not authorized to perform: bedrock:InvokeModel", rejected by IAM |
+
+The verification was finished the same day, but that was only the first of three hurdles. With my administrator
+account, I then tried a range of models:
+
+| Models | Result |
+|---|---|
+| Claude Sonnet 4.6 (`global.`), Claude Haiku 4.5 (`au.`), Amazon Nova Micro | An answer |
+| Claude Haiku 4.5 (`global.`) | "Model use case details have not been submitted for this account" |
+| Claude 5 and 5.5, Claude Opus 4.8, GPT-5.5 and all GPT-6 models | "is not available for this account", with a reference to AWS Sales |
+
+The second hurdle is a short form about the intended use, which Anthropic requires once per account before its models
+can be used. It is in the Bedrock console, in the **Model catalog** on the page of an Anthropic model. The third one
+is the newest and largest models, which AWS only unlocks for an account on request. I requested access to the three
+Claude 5.5 models in the console. Right after the request, they were still blocked. For the GPT models, the console
+did not offer a request at all, which is why I took GPT-6.2 Sol out again.
+
+It is worth mentioning that the error message does not say why a model is not available. My interpretation is that
+AWS keeps the newest models back for new accounts without any usage history, since older models work on the same
+account.
 
 ## Accounts
 
@@ -520,16 +539,16 @@ year, and for now, typing `http://` is good enough.
 | Reboot of the server | All five containers back without any action, the login page answers |
 | Log in, reload the page | Not tested yet |
 | Bedrock invocation logging | Not configured, prompts are not stored on the AWS account |
-| IAM user with the four models | Allowed by IAM, blocked by the verification of the account |
+| IAM user with the three Claude 5.5 models | Allowed by IAM, blocked by AWS |
 | IAM user with other models | Rejected by IAM |
-| Chat with a model | Not possible yet, AWS is still verifying the account |
+| Claude Sonnet 4.6 with my administrator account | An answer, so Bedrock itself works on the account |
+| Chat with a model in LibreChat | Not possible yet, the Claude 5.5 models are not unlocked for my account |
 
 ## Open points
 
-- **The first chat.** Once AWS has verified the account, I will test all four models through LibreChat. I am least
-  sure about GPT-6.2 Sol, since I do not know yet how well LibreChat's Bedrock connection handles the OpenAI models.
-  Models of other providers are sold through the AWS Marketplace, and the first request may need a subscription
-  there.
+- **Access to the Claude 5.5 models.** The request is submitted. Once AWS has unlocked them, I will test all three
+  through LibreChat. Until then, Claude Sonnet 4.6 would work as a temporary model, if the family does not want to
+  wait.
 - **Spending limits.** An AWS Budgets alert, and possibly the token limits per user which LibreChat offers.
 - **Registration.** It is still open. It gets switched off once the family has registered.
 - **Backups.** Nothing backs up the server yet. The important parts are the directory `data-node` with the MongoDB
@@ -544,5 +563,5 @@ LibreChat runs on a small separate PC in my LAN instead of the router, with Libr
 override for the stable image and port 80. The router gives it a fixed address, the name `chat.lan` and access
 through WireGuard, without a single new firewall rule. Since there is no certificate, the address has to be typed as
 `http://chat.lan`, and the login cookie must not be marked Secure. The models come from AWS Bedrock: Claude Haiku,
-Sonnet and Opus 5.5 and GPT-6.2 Sol, through `global.` inference profiles, with an IAM user which may only call these
-four models. As soon as AWS has verified the account, the family can start chatting.
+Sonnet and Opus 5.5 through `global.` inference profiles, with an IAM user which may only call these three models. As
+soon as AWS has unlocked them for my account, the family can start chatting.
