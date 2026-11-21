@@ -7,8 +7,9 @@ aiAssisted: true
 
 {{% hint info %}}
 **Built in November 2026** on a Lenovo ThinkCentre M90q with Ubuntu 26.04.1 LTS, kernel 7.0.0, Docker 29.10.0,
-Docker Compose v5.8.0 and LibreChat v0.8.9. The web interface, the accounts and the restart after a reboot work. No
-model provider is connected yet, I will add AWS Bedrock next and update this article then.
+Docker Compose v5.8.0 and LibreChat v0.8.9. The web interface, the accounts and the restart after a reboot work.
+AWS Bedrock is configured as the model provider, but AWS was still verifying my account when I set it up, so no model
+has answered yet. I will update this article once the first chat works.
 {{% /hint %}}
 
 This part of the series is about [LibreChat](https://www.librechat.ai/), an open source web interface for chatting
@@ -21,10 +22,12 @@ My first plan was to run LibreChat on the router itself, in Docker networks of i
 [BitTorrent client](openwrt-raspberry-pi-4b-bittorrent-vpn) and [Gitea](openwrt-raspberry-pi-4b-gitea). I changed
 that plan. LibreChat now runs on a small separate PC in the LAN, and the router only provides three things for it: a
 fixed address, the name `chat.lan` and access from away through the
-[WireGuard server](openwrt-raspberry-pi-4b-wireguard). It is meant for the whole family, from the LAN or through the tunnel.
-It is not reachable from the internet, and it is not supposed to be.
+[WireGuard server](openwrt-raspberry-pi-4b-wireguard). It is meant for the whole family, from the LAN or through
+the tunnel. It is not reachable from the internet, and it is not supposed to be. The models come from
+[AWS Bedrock](https://aws.amazon.com/bedrock/).
 
-(Note: the user name and the host name in the prompts below are made up, as is the MAC address)
+(Note: the user name and the host name in the prompts below are made up, as are the MAC address and the AWS account
+ID `123456789012`)
 
 ## Why not on the router
 
@@ -77,7 +80,7 @@ flowchart LR
   lc --- mongo
   lc --- meili
   lc --- rag
-  lc -. "HTTPS to the model API<br/>not connected yet" .-> inet(("Internet"))
+  lc -. "HTTPS to AWS Bedrock<br/>ap-southeast-2" .-> inet(("Internet"))
 {{< /mermaid >}}
 
 - **In the LAN, the router is not involved.** The PC, the phones and the server are in the same subnet, so a browser
@@ -190,7 +193,7 @@ A few notes on this file:
   development branch. For a server the whole family uses, I prefer the releases.
 - **Port 80.** The compose file publishes port 3080. `!override` replaces this list instead of adding to it, so port
   3080 is no longer published at all. Inside the container, LibreChat still listens on 3080.
-- **`librechat.yaml`** holds the advanced settings, such as the model providers later on. The compose file does not
+- **`librechat.yaml`** holds the advanced settings, such as custom model providers. The compose file does not
   mount it, and without it, LibreChat logs an error on every start. For now, my file only contains two lines:
   `version: 1.3.19` and `cache: true`.
 - **The admin panel.** The compose file of v0.8.9 also starts an admin panel on port 3000, a web interface to manage
@@ -234,6 +237,162 @@ therefore always run:
 ```shell
 user@m90q:~/librechat$ docker compose up -d --force-recreate api
 ```
+
+## AWS Bedrock
+
+LibreChat does not run any model itself, it needs a provider. I use [AWS Bedrock](https://aws.amazon.com/bedrock/),
+which offers the models of many providers through one API and bills them per token on the AWS account. I already
+have an AWS account for the public name of my router, as described in
+[Dynamic DNS with AWS Route 53](openwrt-raspberry-pi-4b-ddns-route53), so there is no new contract and no second
+bill. LibreChat supports Bedrock directly, no plugin or proxy is needed.
+
+Before connecting anything, I checked whether Bedrock stores prompts on my account. It does this only if model
+invocation logging is configured, and the command returned nothing, so it is not:
+
+```shell
+me@pc:~$ aws bedrock get-model-invocation-logging-configuration \
+  --region ap-southeast-2
+```
+
+### 1. The models
+
+Bedrock in Sydney (`ap-southeast-2`) offers the models of about a dozen providers, among them Anthropic, OpenAI,
+DeepSeek, Mistral, Qwen and xAI. The current models of Anthropic and OpenAI cannot be called by their plain model ID,
+but only through a so-called inference profile, which decides where the request is processed. These are the ones
+available to my account:
+
+```shell
+me@pc:~$ aws bedrock list-inference-profiles --region ap-southeast-2 \
+  --query 'inferenceProfileSummaries[].inferenceProfileId' --output text
+```
+
+For Claude, there are two kinds of profiles. `au.` profiles keep the requests in Australia, `global.` profiles may
+process them anywhere in the world. The current GPT models of OpenAI are only available through `global.`. I keep the
+selection in LibreChat short, so that the family does not have to choose between a dozen models. These are the four
+I offer, with the prices for Sydney from the AWS Price List API in November 2026, in US dollars per million tokens:
+
+| Model | Inference profile | Input | Output |
+|---|---|---|---|
+| Claude Haiku 5.5 | `global.anthropic.claude-haiku-5-5` | $0.10 | $0.50 |
+| Claude Sonnet 5.5 | `global.anthropic.claude-sonnet-5-5` | $2.00 | $10.00 |
+| Claude Opus 5.5 | `global.anthropic.claude-opus-5-5` | $4.00 | $20.00 |
+| GPT-6.2 Sol | `global.openai.gpt-6.2-sol` | $2.00 | $10.00 |
+
+The `au.` profiles of the three Claude models cost exactly 10% more. I first configured them, and then switched to
+`global.` for all four models, since keeping the requests in Australia is not worth the extra cost to me. A typical
+question with a medium-length answer of about 2,000 input and 500 output tokens costs about one US cent with Sonnet.
+Keep in mind that every answer sends the whole conversation so far as input again, so long conversations get more
+expensive per message.
+
+(Note: Haiku and GPT-6.2 Sol also have a higher price for very long requests, the Price List API lists it as "Long
+Context". I did not find out where the limit is)
+
+### 2. An IAM user which may only call these models
+
+LibreChat gets an AWS key of its own, which belongs to an IAM user without any other rights. If the key ever leaks,
+it can call these four models and nothing else. The policy allows the two actions LibreChat needs to send a request
+and to stream the answer:
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [{
+    "Sid": "InvokeGlobalProfiles",
+    "Effect": "Allow",
+    "Action": [
+      "bedrock:InvokeModel",
+      "bedrock:InvokeModelWithResponseStream"
+    ],
+    "Resource": [
+      "arn:aws:bedrock:ap-southeast-2:123456789012:inference-profile/global.anthropic.claude-haiku-*",
+      "arn:aws:bedrock:ap-southeast-2:123456789012:inference-profile/global.anthropic.claude-sonnet-*",
+      "arn:aws:bedrock:ap-southeast-2:123456789012:inference-profile/global.anthropic.claude-opus-*",
+      "arn:aws:bedrock:ap-southeast-2:123456789012:inference-profile/global.openai.gpt-6.2-sol",
+      "arn:aws:bedrock:*::foundation-model/anthropic.claude-haiku-*",
+      "arn:aws:bedrock:*::foundation-model/anthropic.claude-sonnet-*",
+      "arn:aws:bedrock:*::foundation-model/anthropic.claude-opus-*",
+      "arn:aws:bedrock:*::foundation-model/openai.gpt-6.2-sol",
+      "arn:aws:bedrock:::foundation-model/anthropic.claude-haiku-*",
+      "arn:aws:bedrock:::foundation-model/anthropic.claude-sonnet-*",
+      "arn:aws:bedrock:::foundation-model/anthropic.claude-opus-*",
+      "arn:aws:bedrock:::foundation-model/openai.gpt-6.2-sol"
+    ]
+  }]
+}
+```
+
+A request through an inference profile is checked against three kinds of resources: the profile itself in my region,
+the model in the region where the request ends up, and for `global.` profiles also the model without any region. That
+is why every model appears three times. The wildcards cover the different versions of Haiku, Sonnet and Opus, but no
+other model family.
+
+I saved the policy as `bedrock-policy.json` and created the user with it:
+
+```shell
+me@pc:~$ aws iam create-user --user-name librechat-bedrock
+me@pc:~$ aws iam put-user-policy --user-name librechat-bedrock \
+  --policy-name invoke-global-models \
+  --policy-document file://bedrock-policy.json
+```
+
+### 3. The key goes straight into `.env`
+
+The access key of the user is only shown once, when it is created. I did not want it in my terminal history or on
+my screen, so I sent it directly from the AWS CLI on my PC to the server, where it is appended to `.env`:
+
+```shell
+me@pc:~$ aws iam create-access-key --user-name librechat-bedrock \
+  --query 'AccessKey.[AccessKeyId,SecretAccessKey]' --output text \
+  | tr -d '\r' | ssh user@m90q 'read -r KID SECRET; cd ~/librechat \
+  && printf "BEDROCK_AWS_ACCESS_KEY_ID=%s\n" "$KID" >> .env \
+  && printf "BEDROCK_AWS_SECRET_ACCESS_KEY=%s\n" "$SECRET" >> .env'
+```
+
+It is worth mentioning that `tr -d '\r'` is not optional on Windows. My first attempt did not have it, and the AWS
+CLI for Windows ends its text output with a carriage return. The secret then had 41 characters instead of 40, the last
+one invisible, and AWS would have rejected every request with it. I only noticed because I checked the length of the
+stored value before using it.
+
+### 4. The settings
+
+Together with the key, these lines in `.env` connect LibreChat to Bedrock:
+
+```text
+ENDPOINTS=bedrock
+BEDROCK_AWS_DEFAULT_REGION=ap-southeast-2
+BEDROCK_AWS_MODELS=global.anthropic.claude-sonnet-5-5,global.anthropic.claude-opus-5-5,global.anthropic.claude-haiku-5-5,global.openai.gpt-6.2-sol
+```
+
+- **`ENDPOINTS=bedrock`** limits the selection in the web interface to Bedrock. Without it, LibreChat also shows the
+  providers from the example file, for example OpenAI with a field where each user would have to enter a key of
+  their own.
+- **`BEDROCK_AWS_MODELS`** is the list in the dropdown, in this order. The first one, Sonnet, is the default.
+  Without the list, LibreChat offers every model it knows for Bedrock, including ones my IAM user may not call.
+
+As described in the section about `.env` above, the container has to be created again afterwards with
+`docker compose up -d --force-recreate api`.
+
+### 5. Waiting for AWS
+
+When I sent the first test requests, every model answered with the same error, also for my own administrator
+account:
+
+```text
+An error occurred (AccessDeniedException) when calling the Converse operation:
+Your account is currently being verified. Verification normally takes less
+than 2 hours. Until your account is verified, you may not have access to this
+operation.
+```
+
+This is a check of AWS for the whole account and has nothing to do with LibreChat or the IAM user. Until it is
+finished, I could at least test the IAM policy. With the key of `librechat-bedrock`, the four models pass IAM and only
+run into the verification, while other models are rejected by IAM itself:
+
+| Model | Result with the key of `librechat-bedrock` |
+|---|---|
+| The four models from the table above | "is not available for this account", the verification |
+| Another Claude model family | "is not authorized to perform: bedrock:InvokeModel", rejected by IAM |
+| An `au.` profile | "is not authorized to perform: bedrock:InvokeModel", rejected by IAM |
 
 ## Accounts
 
@@ -360,11 +519,18 @@ year, and for now, typing `http://` is good enough.
 | `https://chat.lan` | Connection refused right away, no waiting |
 | Reboot of the server | All five containers back without any action, the login page answers |
 | Log in, reload the page | Not tested yet |
-| Chat with a model | Not possible yet, no provider is connected |
+| Bedrock invocation logging | Not configured, prompts are not stored on the AWS account |
+| IAM user with the four models | Allowed by IAM, blocked by the verification of the account |
+| IAM user with other models | Rejected by IAM |
+| Chat with a model | Not possible yet, AWS is still verifying the account |
 
 ## Open points
 
-- **The model provider.** AWS Bedrock is next, with an IAM user of its own which may only call the models.
+- **The first chat.** Once AWS has verified the account, I will test all four models through LibreChat. I am least
+  sure about GPT-6.2 Sol, since I do not know yet how well LibreChat's Bedrock connection handles the OpenAI models.
+  Models of other providers are sold through the AWS Marketplace, and the first request may need a subscription
+  there.
+- **Spending limits.** An AWS Budgets alert, and possibly the token limits per user which LibreChat offers.
 - **Registration.** It is still open. It gets switched off once the family has registered.
 - **Backups.** Nothing backs up the server yet. The important parts are the directory `data-node` with the MongoDB
   database and the file `.env`. Losing `.env` makes the API keys stored in the database unreadable, so it needs to
@@ -377,4 +543,6 @@ year, and for now, typing `http://` is good enough.
 LibreChat runs on a small separate PC in my LAN instead of the router, with LibreChat's own compose file and an
 override for the stable image and port 80. The router gives it a fixed address, the name `chat.lan` and access
 through WireGuard, without a single new firewall rule. Since there is no certificate, the address has to be typed as
-`http://chat.lan`, and the login cookie must not be marked Secure.
+`http://chat.lan`, and the login cookie must not be marked Secure. The models come from AWS Bedrock: Claude Haiku,
+Sonnet and Opus 5.5 and GPT-6.2 Sol, through `global.` inference profiles, with an IAM user which may only call these
+four models. As soon as AWS has verified the account, the family can start chatting.
